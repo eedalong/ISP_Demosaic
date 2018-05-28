@@ -1,0 +1,12 @@
+*.pyc
+*.jpg
+*.pth
+*.pdf
+*.dot
+*.swp
+*.swp
+*.swo
+*.json
+tmp
+*.sh
+*.png
