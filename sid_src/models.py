@@ -12,62 +12,62 @@ class SIDNet(nn.Module):
         super(SIDNet,self).__init__();
         self.pack_mosaic = layers.PackBayerMosaicLayer(bayer_type = 'GRBG');
         self.down_layer1  = nn.Sequential(
-            nn.Conv2d(4,32,kernel_size = 3,stride = 1),
+            nn.Conv2d(4,32,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
-            nn.Conv2d(32,32,kernel_size = 3,stride = 1),
+            nn.Conv2d(32,32,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
         );
         self.down_layer2  = nn.Sequential(
-            nn.Conv2d(32,64,kernel_size = 3,stride = 1),
+            nn.Conv2d(32,64,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
-            nn.Conv2d(64,64,kernel_size = 3,stride = 1),
+            nn.Conv2d(64,64,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
         );
         self.down_layer3  = nn.Sequential(
-            nn.Conv2d(64,128,kernel_size = 3,stride = 1),
+            nn.Conv2d(64,128,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
-            nn.Conv2d(128,128,kernel_size = 3,stride = 1),
+            nn.Conv2d(128,128,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
         );
         self.down_layer4  = nn.Sequential(
-            nn.Conv2d(128,256,kernel_size = 3,stride = 1),
+            nn.Conv2d(128,256,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
-            nn.Conv2d(256,256,kernel_size = 3,stride = 1),
+            nn.Conv2d(256,256,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
         );
         self.down_layer5  = nn.Sequential(
-            nn.Conv2d(256,512,kernel_size = 3,stride = 1),
+            nn.Conv2d(256,512,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
-            nn.Conv2d(512,512,kernel_size = 3,stride = 1),
+            nn.Conv2d(512,512,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
         );
         self.up1 = layers.Upsample_Concat(512,256);
         self.up_layer1  = nn.Sequential(
-            nn.Conv2d(512,256,kernel_size = 3,stride = 1),
+            nn.Conv2d(512,256,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
-            nn.Conv2d(256,256,kernel_size = 3,stride = 1),
+            nn.Conv2d(256,256,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
         );
         self.up2 = layers.Upsample_Concat(256,128);
         self.up_layer2  = nn.Sequential(
-            nn.Conv2d(256,128,kernel_size = 3,stride = 1),
+            nn.Conv2d(256,128,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
-            nn.Conv2d(128,128,kernel_size = 3,stride = 1),
+            nn.Conv2d(128,128,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
         );
         self.up3 = layers.Upsample_Concat(128,64);
         self.up_layer3  = nn.Sequential(
-            nn.Conv2d(128,64,kernel_size = 3,stride = 1),
+            nn.Conv2d(128,64,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
-            nn.Conv2d(64,64,kernel_size = 3,stride = 1),
+            nn.Conv2d(64,64,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
         );
 
         self.up4 = layers.Upsample_Concat(64,32);
         self.up_layer4  = nn.Sequential(
-            nn.Conv2d(64,32,kernel_size = 3,stride = 1),
+            nn.Conv2d(64,32,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
-            nn.Conv2d(32,32,kernel_size = 3,stride = 1),
+            nn.Conv2d(32,32,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
         );
 
@@ -93,8 +93,10 @@ class SIDNet(nn.Module):
     def forward(self,inputs,noise_info):
         packed_input  = self.pack_mosaic(inputs);
         down_layer1 = self.down_layer1(packed_input);
+        print('dalong log : check down_layer1 size  = {}'.format(down_layer1.size()));
         down_pool1 = F.max_pool2d(down_layer1,kernel_size = 2,stride = 2);
 
+        print('dalong log : check down_pool1 size  = {}'.format(down_pool1.size()));
         down_layer2 = self.down_layer2(down_pool1);
         down_pool2 = F.max_pool2d(down_layer2,kernel_size = 2,stride = 2);
 
@@ -119,6 +121,7 @@ class SIDNet(nn.Module):
 
         up_layer5 = self.up_layer5(up_layer4);
         output = self.output_layer(up_layer5);
+        print('dalong log : check output size = {}'.format(output.size()));
         return output;
 class BayerNetwork(nn.Module):
     """Released version of the network, best quality.
@@ -210,13 +213,12 @@ def Draw_Graph():
     if config.CUDA_USE:
         model = model.cuda();
     model.eval();
-    inputs_raw = Variable(torch.rand((1,3,512,512)));
+    inputs_raw = Variable(torch.rand((1,3,132,220)));
     inputs_sigma = Variable(torch.rand(1,1,64,64));
     if config.CUDA_USE:
         inputs_raw = inputs_raw.cuda();
         inputs_sigma = inputs_sigma.cuda();
     outputs = model(inputs_raw,inputs_sigma);
-
     dot_file = dot.make_dot(outputs,dict(model.named_parameters()));
     dot_file.save('model_arch.dot');
     (graph,) = pydot.graph_from_dot_file('model_arch.dot');

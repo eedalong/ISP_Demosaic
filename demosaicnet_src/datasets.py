@@ -8,6 +8,7 @@ import NoiseEstimation
 import create_CFA
 import random
 from PIL import Image
+import colour_demosaicing.bayer.demosaicing.bilinear   as bilinear
 '''
 This is an implementation for dataset.py for Joint Demosaic & Denoising
 
@@ -87,14 +88,16 @@ class dataSet(data.Dataset):
         if self.Random :
             raw,data = RandomCrop(self.size,raw,data);
         #raw,data = RandomFLipH(raw,data);
-        raw = np.asarray(raw).astype('float32')
+        raw = np.asarray(raw).astype('float32');
+        raw = (raw - self.args.black_point*1.0) / (self.args.white_point - self.args.black_point);
+        if self.args.predemosaic:
+            raw = bilinear.demosaicing_CFA_Bayer_bilinear(raw,self.args.bayer_type);
         if len(raw.shape) == 2:
             raw = np.dstack((raw,raw,raw));
         data = np.asarray(data).astype('float32');
         if data.shape[2] == 4:
             data = data[:,:,:3];
         # raw and data should be scaled to 0-1
-        raw = (raw - self.args.black_point*1.0) / (self.args.white_point - self.args.black_point);
         raw = torch.FloatTensor(raw.transpose(2,0,1));
         data = torch.FloatTensor(data.transpose(2,0,1) * 0.00390625);
         sigma_ = 0;

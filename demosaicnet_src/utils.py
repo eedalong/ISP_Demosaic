@@ -24,7 +24,8 @@ class Recorder:
            self.records[record_name] = {};
         self.records[record_name][steps] = value;
         if steps % self.freq == 0:
-            self.DrawGraph(record_name);
+            pass
+            #self.DrawGraph(record_name);
     def DrawGraph(self,record_name):
         figure = plt.figure(record_name);
         plt.plot(self.records[record_name].keys(),self.records[record_name].values());

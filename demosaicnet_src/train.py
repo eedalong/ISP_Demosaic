@@ -10,6 +10,7 @@ import os
 import utils
 import datasets as dataset
 import argparse
+import dalong_loss
 losses = utils.AverageMeter();
 recorder = utils.Recorder(save_dir ='./records/');
 def train(train_loader,model,criterion,optimizer,epoch,args):
@@ -38,9 +39,10 @@ def main(args):
     print('dalong log : begin to load data');
     train_loader = torch.utils.data.DataLoader(train_dataset,args.batchsize,shuffle = True,num_workers = int(args.workers));
     #model = models.DemosaicNet(args.depth,args.width,args.kernel_size,pad = args.pad,batchnorm = args.batchnorm,bayer_type = args.bayer_type);
-    model = models.BayerNetwork(args);
+    #model = models.BayerNetwork(args);
+    model = models.DeepISP(args);
     print('dalong log : model build finished ');
-    criterion = models.DemosaicNetLoss();
+    criterion = dalong_loss.L2Loss();
     print('dalong log : Loss build finished ');
     model = torch.nn.DataParallel(model,device_ids = list(args.gpu_use));
     model = model.cuda();
@@ -79,6 +81,8 @@ if __name__ == '__main__':
     parser.add_argument('--Evaluate',type = bool,default =False,help = 'Whether to evaluate the dataset');
     parser.add_argument('--white_point',type = float,default = 255,help  = 'white point for raw data ');
     parser.add_argument('--black_point',type = float,default = 0,help = 'black point for raw data ');
+    parser.add_argument('--pretrained',type = int,default = 0,help = 'whether init the model with pretrained models');
+    parser.add_argument('--predemosaic',type = int,default = 0,help = ' whether to demosaic the image with biliteral algorithm');
     # if there is a sigma_info file for using ,it is like sigma_shot ,sigma_read
     # if not ,we use our own NoiseEstimation module for noise estimation
     parser.add_argument('--sigma_info',type = bool,default = False,help = 'if this dataset has sigma_info file to use ');

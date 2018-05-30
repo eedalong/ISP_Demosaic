@@ -36,7 +36,11 @@ def Gamma(image):
 	return a;
 
 def PSNR(img1,img2,crop,peak_value = 255):
-    mse = np.mean((img1[:,crop[0]:-crop[0],crop[1]:-crop[1]] - img2[:,crop[0]:-crop[0],crop[1]:-crop[1]])**2);
+    mse = 0;
+    if crop[0] !=0 and crop[1] !=0:
+        mse = np.mean((img1[:,crop[0]:-crop[0],crop[1]:-crop[1]] - img2[:,crop[0]:-crop[0],crop[1]:-crop[1]])**2);
+    else:
+        mse = np.mean((img1 - img2)**2);
     return 10*np.log10((peak_value**2)/mse );
 def test(train_loader,model):
     global image_index,Flag;
@@ -55,6 +59,7 @@ def test(train_loader,model):
         raw_var = Variable(raw).cuda();
         sigma_info = Variable(sigma_info).cuda();
         output = model(raw_var,sigma_info);
+        print('dalong log: check input and output size = {} ={}'.format(data.size(),output.size()))
         batchSize = raw_var.size(0);
         output = output.data.cpu().numpy();
         if Flag:
@@ -63,10 +68,13 @@ def test(train_loader,model):
             print('dalong log : check c  ={}'.format(c));
             Flag = 0;
             continue ;
-        output = output[:,:,int(crop[0]%2):-(int(crop[0]%2)),int(crop[1]%2):-int(crop[1]%2)];
+        if crop[0] !=0 and crop[1]!=0:
+            output = output[:,:,int(crop[0]%2):-(int(crop[0]%2)),int(crop[1]%2):-int(crop[1]%2)];
         data = data.data.cpu().numpy();
 
+        print('dalong log: check input and output size = {} ={}'.format(data.shape,output.shape));
         ssim_value = ssim(torch.FloatTensor(output),torch.FloatTensor(data));
+
         ssim_meter.update(ssim_value,1);
         for index in range(batchSize):
             data_image = (np.clip(output[index,:,:,:] / 0.00390625 + 0.5 ,0,255)).astype('uint8')
@@ -91,7 +99,8 @@ def main(args):
     test_dataset = datasets.dataSet(args);
     test_loader = torch.utils.data.DataLoader(test_dataset,batch_size = args.batchsize,shuffle = False,num_workers = int(args.workers));
     #model = models.DemosaicNet(args.depth,args.width,args.kernel_size,pad = args.pad,batchnorm = args.batchnorm,bayer_type = args.bayer_type);
-    model = models.BayerNetwork(args);
+    #model = models.BayerNetwork(args);
+    model = models.DeepISP(args)
     model = torch.nn.DataParallel(model,device_ids = args.gpu_use);
     if args.init_model != '':
         print('dalong log : init model with {}'.format(args.init_model))
@@ -130,6 +139,8 @@ if __name__ == '__main__':
     parser.add_argument('--white_point',type = float,default = 255,help  = 'white point for raw data ');
     parser.add_argument('--black_point',type = float,default = 0,help = 'black point for raw data ');
     parser.add_argument('--init_model',type = str,default = '',help = 'model name for testing ');
+    parser.add_argument('--pretrained',type = int,default = 0,help = 'whether to use pretrianed model to init the model ');
+    parser.add_argument('--predemosaic',type = int,default=0,help = 'whether to predemosaic with bilinear method')
     args = parser.parse_args();
     args.gpu_use = [int(item) for item in list(args.gpu_use[0].split(','))];
     print('all the params set  = {}'.format(args));

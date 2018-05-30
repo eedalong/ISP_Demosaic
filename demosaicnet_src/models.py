@@ -3,9 +3,10 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 import numpy as np
-import layer as layers
+import dalong_layers as layers
 from torch.nn import init
 from collections import OrderedDict
+import config
 #import init_path
 #import caffe
 
@@ -100,7 +101,6 @@ class BayerNetwork(nn.Module):
         self.crop_like = layers.CropLayer();
         self.depth = args.depth
         self.width = args.width
-
         layers1 = OrderedDict([
             ("pack_mosaic", nn.Conv2d(3, 4, 2, stride=2)),  # Downsample 2x2 to re-establish translation invariance
         ])
@@ -123,7 +123,11 @@ class BayerNetwork(nn.Module):
         ("post_relu", nn.ReLU(inplace=True)),
          ("output", nn.Conv2d(self.width, 3, 1)),
         ]))
-        self.init_with_pretrained();
+        if args.pretrained:
+            self.init_with_pretrained();
+        else:
+            self.init_params();
+
     def init_params(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -167,6 +171,198 @@ class BayerNetwork(nn.Module):
 
         return output
 
+class SIDNet(nn.Module):
+    def __init__(self,args):
+        self.args = args;
+        super(SIDNet,self).__init__();
+        self.pack_mosaic = layers.PackBayerMosaicLayer(bayer_type = 'GRBG');
+        self.down_layer1  = nn.Sequential(
+            nn.Conv2d(4,32,kernel_size = 3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_slope = 0.2),
+            nn.Conv2d(32,32,kernel_size = 3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_slope = 0.2),
+        );
+        self.down_layer2  = nn.Sequential(
+            nn.Conv2d(32,64,kernel_size = 3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_slope = 0.2),
+            nn.Conv2d(64,64,kernel_size = 3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_slope = 0.2),
+        );
+        self.down_layer3  = nn.Sequential(
+            nn.Conv2d(64,128,kernel_size = 3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_slope = 0.2),
+            nn.Conv2d(128,128,kernel_size = 3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_slope = 0.2),
+        );
+        self.down_layer4  = nn.Sequential(
+            nn.Conv2d(128,256,kernel_size = 3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_slope = 0.2),
+            nn.Conv2d(256,256,kernel_size = 3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_slope = 0.2),
+        );
+        self.down_layer5  = nn.Sequential(
+            nn.Conv2d(256,512,kernel_size = 3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_slope = 0.2),
+            nn.Conv2d(512,512,kernel_size = 3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_slope = 0.2),
+        );
+        self.up1 = layers.Upsample_Concat(512,256);
+        self.up_layer1  = nn.Sequential(
+            nn.Conv2d(512,256,kernel_size = 3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_slope = 0.2),
+            nn.Conv2d(256,256,kernel_size = 3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_slope = 0.2),
+        );
+        self.up2 = layers.Upsample_Concat(256,128);
+        self.up_layer2  = nn.Sequential(
+            nn.Conv2d(256,128,kernel_size = 3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_slope = 0.2),
+            nn.Conv2d(128,128,kernel_size = 3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_slope = 0.2),
+        );
+        self.up3 = layers.Upsample_Concat(128,64);
+        self.up_layer3  = nn.Sequential(
+            nn.Conv2d(128,64,kernel_size = 3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_slope = 0.2),
+            nn.Conv2d(64,64,kernel_size = 3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_slope = 0.2),
+        );
+
+        self.up4 = layers.Upsample_Concat(64,32);
+        self.up_layer4  = nn.Sequential(
+            nn.Conv2d(64,32,kernel_size = 3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_slope = 0.2),
+            nn.Conv2d(32,32,kernel_size = 3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_slope = 0.2),
+        );
+
+        self.up_layer5 = nn.Conv2d(32,12,kernel_size = 1,stride = 1);
+        self.output_layer = nn.ConvTranspose2d(12,3,2,stride = 2,groups = 3);
+
+        self.init_params();
+
+    def init_params(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m,nn.ConvTranspose2d):
+                init.kaiming_normal(m.weight, mode='fan_out');
+                if m.bias is not None:
+                    init.constant(m.bias, 0);
+            elif isinstance(m, nn.BatchNorm2d):
+                init.constant(m.weight, 1);
+                init.constant(m.bias, 0);
+            elif isinstance(m, nn.Linear):
+                init.normal(m.weight, std=0.001);
+                if m.bias is not None:
+                    init.constant(m.bias, 0)
+
+    def forward(self,inputs,noise_info):
+        packed_input  = self.pack_mosaic(inputs);
+        down_layer1 = self.down_layer1(packed_input);
+#        print('dalong log : check down_layer1 size = {}'.format(down_layer1.size()))
+        down_pool1 = F.max_pool2d(down_layer1,kernel_size = 2,stride = 2);
+ #       print('dalong log : check down_pool1 size = {}'.format(down_pool1.size()))
+        down_layer2 = self.down_layer2(down_pool1);
+  #      print('dalong log : check down_layer2 size = {}'.format(down_layer2.size()))
+        down_pool2 = F.max_pool2d(down_layer2,kernel_size = 2,stride = 2);
+   #     print('dalong log : check down_pool2 size = {}'.format(down_pool2.size()))
+
+        down_layer3 = self.down_layer3(down_pool2);
+    #    print('dalong log : check down_layer3 size = {}'.format(down_layer3.size()))
+        down_pool3 = F.max_pool2d(down_layer3,kernel_size = 2,stride = 2);
+
+     #   print('dalong log : check down_pool3 size = {}'.format(down_pool3.size()))
+        down_layer4 = self.down_layer4(down_pool3);
+      #  print('dalong log : check down_layer4 size = {}'.format(down_layer4.size()))
+        down_pool4 = F.max_pool2d(down_layer4,kernel_size = 2,stride = 2);
+       # print('dalong log : check down_pool4 size = {}'.format(down_pool4.size()))
+
+        down_layer5 = self.down_layer5(down_pool4);
+       # print('dalong log : check down_layer5 size = {}'.format(down_layer5.size()))
+        up1 = self.up1(down_layer5,down_layer4);
+       # print('dalong log : check up1 size = {}'.format(up1.size()))
+        up_layer1 = self.up_layer1(up1);
+       # print('dalong log : check up_layer1 size = {}'.format(up_layer1.size()))
+
+        up2  = self.up2(up_layer1,down_layer3);
+       # print('dalong log : check up2 size = {}'.format(up2.size()))
+        up_layer2 = self.up_layer2(up2);
+       # print('dalong log : check up_layer2 size = {}'.format(up_layer2.size()))
+
+        up3 = self.up3(up_layer2,down_layer2);
+        #print('dalong log : check up3 size = {}'.format(up3.size()))
+        up_layer3 = self.up_layer3(up3);
+        #print('dalong log : check up_layer3 size = {}'.format(up_layer3.size()))
+
+        up4 = self.up4(up_layer3,down_layer1);
+        #print('dalong log : check up4 size = {}'.format(up4.size()))
+        up_layer4 = self.up_layer4(up4);
+
+        #print('dalong log : check up_layer4 size = {}'.format(up_layer4.size()))
+        up_layer5 = self.up_layer5(up_layer4);
+       # print('dalong log : check up_layer5 size = {}'.format(up_layer5.size()))
+        output = self.output_layer(up_layer5);
+        #print('dalong log : check output size = {}'.format(output.size()))
+        return output;
+
+
+class DeepISP(nn.Module):
+	def __init__(self,args):
+		super(DeepISP,self).__init__();
+		#self.denoisingNet = DenoisingNet(num_denoise_layers = 15);
+		self.block1 = layers.isp_block(3);
+		self.block2 = layers.isp_block(64);
+		self.block3 = layers.isp_block(64);
+		self.block4 = layers.isp_block(64);
+		self.block5 = layers.isp_block(64);
+		self.block6 = layers.isp_block(64);
+		self.block7 = layers.isp_block(64);
+		self.block8 = layers.isp_block(64);
+		self.block9 = layers.isp_block(64);
+		self.block10 = layers.isp_block(64);
+		self.block11 = layers.isp_block(64);
+		self.block12 = layers.isp_block(64);
+		self.block13 = layers.isp_block(64);
+		self.block14 = layers.isp_block(64);
+		self.block15 = layers.isp_block(64);
+		self.block16 = layers.isp_block(64);
+		self.block17 = layers.isp_block(64);
+		self.block18 = layers.isp_block(64);
+		self.block19 = layers.isp_block(64);
+		self.block20 = layers.isp_block(64);
+		self.init_params();
+
+	def init_params(self):
+		for m in self.modules():
+			if(isinstance(m,nn.Linear)):
+				nn.init.normal(m.weight,std = 0.001);
+				nn.init.constant(m.bias,0);
+			if(isinstance(m,nn.Conv2d)):
+				nn.init.kaiming_normal(m.weight,mode = 'fan_out');
+				nn.init.constant(m.bias,0);
+	def forward(self,raw,sigma):
+
+		left,right = self.block1(raw,raw,False) ;
+		left,right = self.block2(left,right) ;
+		left,right = self.block3(left,right) ;
+		left,right = self.block4(left,right) ;
+		left,right = self.block5(left,right) ;
+		left,right = self.block6(left,right) ;
+		left,right = self.block7(left,right) ;
+		left,right = self.block8(left,right) ;
+		left,right = self.block9(left,right) ;
+		left,right = self.block10(left,right) ;
+		left,right = self.block11(left,right) ;
+		left,right = self.block12(left,right) ;
+		left,right = self.block13(left,right) ;
+		left,right = self.block14(left,right) ;
+		left,right = self.block15(left,right) ;
+		left,right = self.block16(left,right) ;
+		left,right = self.block17(left,right) ;
+		left,right = self.block18(left,right) ;
+		left,right = self.block19(left,right) ;
+		left,right = self.block20(left,right) ;
+		return right;
+
 
 class DemosaicNetLoss(nn.Module):
     def __init__(self):
@@ -175,25 +371,32 @@ class DemosaicNetLoss(nn.Module):
         self.perceptural_loss = 0;
         self.CropLayer = layers.CropLayer();
     def forward(self,inputs,gt):
-        gt = self.CropLayer(gt,inputs)
+        gt = self.CropLayer(gt,inputs);
         loss = self.pixel_loss(inputs,gt);
         return loss;
 def Draw_Graph():
     from torchviz import dot
     import pydot
-
-    model = DemosaicNet(15,64,3,1,False,'RGGB');
-    exit();
+    args = 1;
+    model = SIDNet(args);
     model = model.cuda();
     model.eval();
-    inputs_raw = Variable(torch.rand((1,3,128,128))).cuda();
-    inputs_sigma = Variable(torch.rand(1,1,64,64)).cuda();
-    outputs = model(inputs_raw,inputs_sigma);
+    layer = layers.CropLayer();
 
+    inputs_raw = Variable(torch.rand((1,3,132,220)));
+    inputs_sigma = Variable(torch.rand(1,1,64,64));
+    if config.CUDA_USE:
+        inputs_raw = inputs_raw.cuda();
+        inputs_sigma = inputs_sigma.cuda();
+    outputs = model(inputs_raw,inputs_sigma);
+    outputs = layer(outputs.outputs);
+    print('dalong log : check outputs size = {}'.format(outputs.size()))
+    '''
     dot_file = dot.make_dot(outputs,dict(model.named_parameters()));
     dot_file.save('model_arch.dot');
     (graph,) = pydot.graph_from_dot_file('model_arch.dot');
     img_name = '{}.png'.format('model_arch.dot');
     graph.write_png(img_name)
+    '''
 if __name__ == '__main__':
     Draw_Graph();

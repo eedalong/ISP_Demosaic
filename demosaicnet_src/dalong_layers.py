@@ -89,6 +89,8 @@ class CropLayer(nn.Module):
     def forward(self,inputs,reference):
         src_sz = reference.size();
         dst_sz = inputs.size();
+        if src_sz == dst_sz :
+            return inputs;
         offset = [(s-d) / 2 for s,d in zip(dst_sz,src_sz)];
         outputs = inputs[:,:,int(offset[2]):int(offset[2])+int(src_sz[2]),int(offset[3]):int(offset[3])+int(src_sz[3])].clone();
         return outputs;
@@ -174,11 +176,33 @@ class Upsample_Concat(nn.Module):
     def __init__(self,in_channels,out_channels):
         super(Upsample_Concat,self).__init__();
         self.deconv = nn.ConvTranspose2d(in_channels,out_channels,kernel_size =2,stride = 2);
-        self.crop = CropLayer();
     def forward(self,inputs1,inputs2):
 
-        outputs1 = self.deconv(inputs1);
-        print('dalong log : check inputs and outputs size = {}  {}'.format(inputs1.size(),outputs1.size()));
-        inputs2 = self.crop(inputs2,outputs1);
+        outputs1 = self.deconv(inputs1,output_size = inputs2.size());
         return torch.cat([outputs1,inputs2],1);
+class isp_block(nn.Module):
+	def __init__(self,input_channel,out_left = 61,out_right = 3):
+		super(isp_block,self).__init__();
+		self.input_channel = input_channel;
+		self.out_left = out_left;
+		self.out_right = out_right;
+		self.pad = nn.ReflectionPad2d(1);
+		self.block_left = nn.Sequential(
+				  nn.Conv2d(input_channel,out_left,kernel_size = 3,stride = 1),
+				  nn.ReLU()
+				);
+		self.block_right = nn.Sequential(
+				  nn.Conv2d(input_channel,out_right,kernel_size = 3,stride = 1),
+				  nn.Tanh(),
+				);
+	def forward(self,feats,residual,cat = True):
+		if(cat):
+			feats = torch.cat((feats,residual),1);
+		# first reflection pad the image
+		feats = self.pad(feats);
+		left_ans = self.block_left(feats);
+		# add residual to NN's output
+		residual = residual + self.block_right(feats) / 10;
+		return left_ans, residual;
+
 
