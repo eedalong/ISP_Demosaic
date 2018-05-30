@@ -7,3 +7,4 @@ cp $basepath/dalong_loss.py   /home/yuanxl/dalong_research/share_files/
 cp $basepath/models.py        /home/yuanxl/dalong_research/share_files/
 git add share_files/
 
+cd $basepath
