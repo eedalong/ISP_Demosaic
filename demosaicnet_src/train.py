@@ -4,7 +4,7 @@ import torch.optim as optim
 from torch.autograd import Variable
 import time
 
-import models
+import dalong_models
 import torch.nn as nn
 import os
 import utils
@@ -40,7 +40,7 @@ def main(args):
     train_loader = torch.utils.data.DataLoader(train_dataset,args.batchsize,shuffle = True,num_workers = int(args.workers));
     #model = models.DemosaicNet(args.depth,args.width,args.kernel_size,pad = args.pad,batchnorm = args.batchnorm,bayer_type = args.bayer_type);
     #model = models.BayerNetwork(args);
-    model = models.DeepISP(args);
+    model = dalong_models.DeepISP(args);
     print('dalong log : model build finished ');
     criterion = dalong_loss.L2Loss();
     print('dalong log : Loss build finished ');

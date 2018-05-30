@@ -1,6 +1,6 @@
 import torch
 import time
-import models
+import dalong_models
 import torch.nn as nn
 import numpy as np
 import os
@@ -100,7 +100,7 @@ def main(args):
     test_loader = torch.utils.data.DataLoader(test_dataset,batch_size = args.batchsize,shuffle = False,num_workers = int(args.workers));
     #model = models.DemosaicNet(args.depth,args.width,args.kernel_size,pad = args.pad,batchnorm = args.batchnorm,bayer_type = args.bayer_type);
     #model = models.BayerNetwork(args);
-    model = models.DeepISP(args)
+    model = dalong_models.DeepISP(args)
     model = torch.nn.DataParallel(model,device_ids = args.gpu_use);
     if args.init_model != '':
         print('dalong log : init model with {}'.format(args.init_model))
