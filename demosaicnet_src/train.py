@@ -38,11 +38,11 @@ def main(args):
     train_dataset = dataset.dataSet(args);
     print('dalong log : begin to load data');
     train_loader = torch.utils.data.DataLoader(train_dataset,args.batchsize,shuffle = True,num_workers = int(args.workers));
-    #model = models.DemosaicNet(args.depth,args.width,args.kernel_size,pad = args.pad,batchnorm = args.batchnorm,bayer_type = args.bayer_type);
+    model = dalong_models.DemosaicNet(args.depth,args.width,args.kernel_size,pad = args.pad,batchnorm = args.batchnorm,bayer_type = args.bayer_type);
     #model = models.BayerNetwork(args);
-    model = dalong_models.DeepISP(args);
+    #model = dalong_models.DeepISP(args);
     print('dalong log : model build finished ');
-    criterion = dalong_loss.L2Loss();
+    criterion = dalong_loss.pixel_perceptural_loss();
     print('dalong log : Loss build finished ');
     model = torch.nn.DataParallel(model,device_ids = list(args.gpu_use));
     model = model.cuda();

@@ -51,7 +51,6 @@ def test(train_loader,model):
     for i ,(raw,data,sigma_info) in  enumerate(train_loader):
         if not Flag :
             raw_pad = np.zeros((raw.shape[0],raw.shape[1],raw.shape[2]+2*c[0],raw.shape[3]+2*c[1]));
-            print('dalong log : check raw size {}'.format(raw.size()));
             raw = raw.data.cpu().numpy();
             for index in range(raw.shape[0]):
                 raw_pad[index,:,:,:] = np.pad(raw[index,:,:,:],[(0,0),(c[0],c[0]),(c[1],c[1])],'reflect');
@@ -59,7 +58,6 @@ def test(train_loader,model):
         raw_var = Variable(raw).cuda();
         sigma_info = Variable(sigma_info).cuda();
         output = model(raw_var,sigma_info);
-        print('dalong log: check input and output size = {} ={}'.format(data.size(),output.size()))
         batchSize = raw_var.size(0);
         output = output.data.cpu().numpy();
         if Flag:
@@ -72,7 +70,6 @@ def test(train_loader,model):
             output = output[:,:,int(crop[0]%2):-(int(crop[0]%2)),int(crop[1]%2):-int(crop[1]%2)];
         data = data.data.cpu().numpy();
 
-        print('dalong log: check input and output size = {} ={}'.format(data.shape,output.shape));
         ssim_value = ssim(torch.FloatTensor(output),torch.FloatTensor(data));
 
         ssim_meter.update(ssim_value,1);

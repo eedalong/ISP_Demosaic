@@ -118,7 +118,8 @@ class PSNR(nn.Module):
   def forward(self, target, output):
     target = self.CropLayer(target, output)
     mse = self.mse(output, target)
-    return -10 * th.log(mse) / np.log(10)
+    return -10 * torch.log(mse) / np.log(10)
+
 
 
 class VGGLoss(nn.Module):
@@ -146,7 +147,7 @@ class VGGLoss(nn.Module):
 
     for p in self.parameters():
       p.requires_grad = False
-
+    self.net = self.net.cuda();
     self.mse = nn.MSELoss()
     self.CropLayer = layers.CropLayer();
 
@@ -158,6 +159,7 @@ class VGGLoss(nn.Module):
 
     losses = []
     for o, t in zip(output_f, target_f):
+      t = t.detach();
       losses.append(self.mse(o, t))
     loss = sum(losses)
     if self.weight != 1.0:
@@ -171,8 +173,161 @@ class VGGLoss(nn.Module):
     for i, s in enumerate(self.net):
       x = s(x)
       if self.normalize:  # unit L2 norm over features, this implies the loss is a cosine loss in feature space
-        f = x / (th.sqrt(th.pow(x, 2).sum(1, keepdim=True)) + 1e-8)
+        f = x / (torch.sqrt(torch.pow(x, 2).sum(1, keepdim=True)) + 1e-8)
       else:
         f = x
       feats.append(f)
     return feats
+class FeatureExtractor_VGG(nn.Module):
+    def __init__(self):
+        super(FeatureExtractor_VGG,self).__init__();
+        # target saves the target input
+        self.target = 0;        # mode decides whether we need to do the loss computation
+        self.mode = 'none';
+        # crit is the crit we use for computing loss
+        self.crit = nn.L1Loss();
+        self.loss =  0;
+        # the model structure is here
+        self.features =  nn.Sequential(
+            nn.Conv2d(3,64,kernel_size = 3,stride = 1,padding = 1),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(64,64,kernel_size = 3,stride = 1,padding = 1),
+            nn.ReLU(inplace = True),
+            nn.MaxPool2d(kernel_size = 2,stride = 2,padding = 0,dilation = 1,ceil_mode = False),
+            nn.Conv2d(64,128,kernel_size = 3,stride = 1,padding = 1),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(128,128,kernel_size = 3,stride = 1,padding = 1),
+            nn.ReLU(inplace = True),
+            nn.MaxPool2d(kernel_size = 2,stride = 2,padding = 0,dilation = 1,ceil_mode = False),
+            nn.Conv2d(128,256,kernel_size = 3,stride = 1,padding = 1),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(256,256,kernel_size = 3,stride = 1,padding = 1),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(256,256,kernel_size = 3,stride =1,padding = 1),
+            nn.ReLU(inplace = True),
+            nn.MaxPool2d(kernel_size = 2,stride = 2,padding = 0,dilation = 1,ceil_mode = False)
+        );
+        '''
+            nn.Conv2d(256,512,kernel_size = 3,stride = 1,padding= 1),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(512,512,kernel_size = 3,stride = 1,padding = 1),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(512,512,kernel_size = 3,stride = 1 ,padding = 1),
+            nn.ReLU(inplace = True),
+            nn.MaxPool2d(kernel_size = 2,stride = 2,padding = 0,dilation = 1,ceil_mode = False),
+            nn.Conv2d(512,512,kernel_size = 3,stride = 1, padding =1),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(512,512,kernel_size = 3,stride = 1, padding =1),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(512,512,kernel_size = 3,stride = 1, padding =1),
+            nn.ReLU(inplace = True),
+            nn.MaxPool2d(kernel_size = 2,stride = 2,padding = 0,dilation = 1,ceil_mode = False),
+        '''
+        self.init();
+    def init(self):
+        vgg_pretrained = models.vgg16(pretrained = True);
+        vgg_params = vgg_pretrained.parameters();
+        param_index = 0;
+        for param in self.parameters():
+            param.data = next(vgg_params).data.clone();
+        print('dalong log : module init finished');
+
+    def set_mode(self,mode):
+        self.mode = mode;
+
+    def forward(self,inputs):
+        output = self.features(inputs);
+        if self.mode == 'capture':
+            self.target = output.detach();
+            #self.target.requires_grad = False;
+        elif self.mode == 'loss':
+            self.loss = self.crit(output,self.target);
+        return output;
+class FeatureExtractor_VGG(nn.Module):
+    def __init__(self):
+        super(FeatureExtractor_VGG,self).__init__();
+        # target saves the target input
+        self.target = 0;
+        # mode decides whether we need to do the loss computation
+        self.mode = 'none';
+        # crit is the crit we use for computing loss
+        self.crit = nn.L1Loss();
+        self.loss =  0;
+        # the model structure is here
+        self.features =  nn.Sequential(
+            nn.Conv2d(3,64,kernel_size = 3,stride = 1,padding = 1),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(64,64,kernel_size = 3,stride = 1,padding = 1),
+            nn.ReLU(inplace = True),
+            nn.MaxPool2d(kernel_size = 2,stride = 2,padding = 0,dilation = 1,ceil_mode = False),
+            nn.Conv2d(64,128,kernel_size = 3,stride = 1,padding = 1),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(128,128,kernel_size = 3,stride = 1,padding = 1),
+            nn.ReLU(inplace = True),
+            nn.MaxPool2d(kernel_size = 2,stride = 2,padding = 0,dilation = 1,ceil_mode = False),
+            nn.Conv2d(128,256,kernel_size = 3,stride = 1,padding = 1),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(256,256,kernel_size = 3,stride = 1,padding = 1),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(256,256,kernel_size = 3,stride =1,padding = 1),
+            nn.ReLU(inplace = True),
+            nn.MaxPool2d(kernel_size = 2,stride = 2,padding = 0,dilation = 1,ceil_mode = False)
+        );
+        self.features = self.features.cuda();
+        '''
+            nn.Conv2d(256,512,kernel_size = 3,stride = 1,padding= 1),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(512,512,kernel_size = 3,stride = 1,padding = 1),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(512,512,kernel_size = 3,stride = 1 ,padding = 1),
+            nn.ReLU(inplace = True),
+            nn.MaxPool2d(kernel_size = 2,stride = 2,padding = 0,dilation = 1,ceil_mode = False),
+            nn.Conv2d(512,512,kernel_size = 3,stride = 1, padding =1),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(512,512,kernel_size = 3,stride = 1, padding =1),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(512,512,kernel_size = 3,stride = 1, padding =1),
+            nn.ReLU(inplace = True),
+            nn.MaxPool2d(kernel_size = 2,stride = 2,padding = 0,dilation = 1,ceil_mode = False),
+        '''
+        self.init();
+    def init(self):
+        vgg_pretrained = tmodels.vgg16(pretrained = True).cuda();
+        vgg_params = vgg_pretrained.parameters();
+        param_index = 0;
+        for param in self.parameters():
+            param.data = next(vgg_params).data.clone();
+        print('dalong log : module init finished');
+
+    def set_mode(self,mode):
+        self.mode = mode;
+
+    def forward(self,inputs):
+        output = self.features(inputs);
+        if self.mode == 'capture':
+            self.target = output.detach();
+            #self.target.requires_grad = False;
+        elif self.mode == 'loss':
+            self.loss = self.crit(output,self.target);
+        return output;
+
+class pixel_perceptural_loss(nn.Module):
+    def __init__(self,weight = 1):
+        super(pixel_perceptural_loss,self).__init__();
+        self.weight = weight;
+        self.pixel = L1Loss();
+        self.extractor = FeatureExtractor_VGG();
+        self.CropLayer = layers.CropLayer();
+    def forward(self,outputs,target):
+        print(outputs.requires_grad);
+        target = self.CropLayer(target,outputs);
+        self.extractor.set_mode('capture');
+        self.extractor(target);
+        self.extractor.set_mode('loss');
+        self.extractor(outputs);
+        percep = self.extractor.loss;
+        percep.backward();
+        #pixel = self.pixel(target,outputs);
+        loss = self.weight * percep;
+        #print('dalong log : check loss of two type = {}  {}'.format(pixel,percep));
+        return loss ;

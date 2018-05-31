@@ -181,28 +181,27 @@ class Upsample_Concat(nn.Module):
         outputs1 = self.deconv(inputs1,output_size = inputs2.size());
         return torch.cat([outputs1,inputs2],1);
 class isp_block(nn.Module):
-	def __init__(self,input_channel,out_left = 61,out_right = 3):
-		super(isp_block,self).__init__();
-		self.input_channel = input_channel;
-		self.out_left = out_left;
-		self.out_right = out_right;
-		self.pad = nn.ReflectionPad2d(1);
-		self.block_left = nn.Sequential(
-				  nn.Conv2d(input_channel,out_left,kernel_size = 3,stride = 1),
-				  nn.ReLU()
-				);
-		self.block_right = nn.Sequential(
-				  nn.Conv2d(input_channel,out_right,kernel_size = 3,stride = 1),
-				  nn.Tanh(),
-				);
-	def forward(self,feats,residual,cat = True):
-		if(cat):
-			feats = torch.cat((feats,residual),1);
-		# first reflection pad the image
-		feats = self.pad(feats);
-		left_ans = self.block_left(feats);
-		# add residual to NN's output
-		residual = residual + self.block_right(feats) / 10;
-		return left_ans, residual;
+    def __init__(self,input_channel,out_left = 61,out_right = 3):
+        super(isp_block,self).__init__();
+        self.pad = nn.ReflectionPad2d(1);
+        self.block_left = nn.Sequential(
+            nn.Conv2d(input_channel,out_left,kernel_size = 3,stride = 1),
+            nn.ReLU(),
+        );
+        self.block_right = nn.Sequential(
+            nn.Conv2d(input_channel,out_right,kernel_size = 3,stride = 1),
+            nn.ReLU(),
+        );
 
+    def forward(self,feats,residual,cat = True):
+        if cat :
+            feats = torch.cat((feats,residual),1);
+        feats = self.pad(feats);
+        left_ans = self.block_left(feats);
+        right_ans = self.block_right(feats);
+        if residual.size()  == right_ans.size():
+            residual = residual + right_ans / 10;
+        else:
+            residual = right_ans;
+        return left_ans,right_ans;
 

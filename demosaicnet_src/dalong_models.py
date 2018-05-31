@@ -307,6 +307,7 @@ class SIDNet(nn.Module):
 
 class DeepISP(nn.Module):
     def __init__(self,args):
+        super(DeepISP,self).__init__();
         self.args = args;
         self.pack = layers.PackBayerMosaicLayer();
         if not self.args.predemosaic:
@@ -367,21 +368,12 @@ class DeepISP(nn.Module):
         left,right = self.block18(left,right);
         left,right = self.block19(left,right);
         if not self.args.predemosaic:
+            right =  torch.cat((left,right),1);
             right = self.block20(right);
             right = self.unpack(right);
         else:
             left,right = self.block20(left,right);
         return right;
-class DemosaicNetLoss(nn.Module):
-    def __init__(self):
-        super(DemosaicNetLoss,self).__init__();
-        self.pixel_loss = torch.nn.MSELoss();
-        self.perceptural_loss = 0;
-        self.CropLayer = layers.CropLayer();
-    def forward(self,inputs,gt):
-        gt = self.CropLayer(gt,inputs);
-        loss = self.pixel_loss(inputs,gt);
-        return loss;
 def Draw_Graph():
     from torchviz import dot
     import pydot
