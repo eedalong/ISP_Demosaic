@@ -315,19 +315,14 @@ class pixel_perceptural_loss(nn.Module):
     def __init__(self,weight = 1):
         super(pixel_perceptural_loss,self).__init__();
         self.weight = weight;
-        self.pixel = L1Loss();
-        self.extractor = FeatureExtractor_VGG();
+        self.pixel = nn.L1Loss();
+        self.percep = VGGLoss();
         self.CropLayer = layers.CropLayer();
     def forward(self,outputs,target):
-        print(outputs.requires_grad);
+
         target = self.CropLayer(target,outputs);
-        self.extractor.set_mode('capture');
-        self.extractor(target);
-        self.extractor.set_mode('loss');
-        self.extractor(outputs);
-        percep = self.extractor.loss;
-        percep.backward();
-        #pixel = self.pixel(target,outputs);
-        loss = self.weight * percep;
+        percep = self.percep(target,outputs)
+        pixel = 0;
+        loss = pixel + self.weight * percep;
         #print('dalong log : check loss of two type = {}  {}'.format(pixel,percep));
         return loss ;
