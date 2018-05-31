@@ -306,74 +306,74 @@ class SIDNet(nn.Module):
 
 
 class DeepISP(nn.Module):
-	def __init__(self,args):
-		super(DeepISP,self).__init__();
-		#self.denoisingNet = DenoisingNet(num_denoise_layers = 15);
-		self.block1 = layers.isp_block(3);
-		self.block2 = layers.isp_block(64);
-		self.block3 = layers.isp_block(64);
-		self.block4 = layers.isp_block(64);
-		self.block5 = layers.isp_block(64);
-		self.block6 = layers.isp_block(64);
-		self.block7 = layers.isp_block(64);
-		self.block8 = layers.isp_block(64);
-		self.block9 = layers.isp_block(64);
-		self.block10 = layers.isp_block(64);
-		self.block11 = layers.isp_block(64);
-		self.block12 = layers.isp_block(64);
-		self.block13 = layers.isp_block(64);
-		self.block14 = layers.isp_block(64);
-		self.block15 = layers.isp_block(64);
-		self.block16 = layers.isp_block(64);
-		self.block17 = layers.isp_block(64);
-		self.block18 = layers.isp_block(64);
-		self.block19 = layers.isp_block(64);
-		self.block20 = layers.isp_block(64);
-		self.init_params();
-
-	def init_params(self):
-		for m in self.modules():
-			if(isinstance(m,nn.Linear)):
-				nn.init.normal(m.weight,std = 0.001);
-				nn.init.constant(m.bias,0);
-			if(isinstance(m,nn.Conv2d)):
-				nn.init.kaiming_normal(m.weight,mode = 'fan_out');
-				nn.init.constant(m.bias,0);
-	def forward(self,raw,sigma):
-
-		left,right = self.block1(raw,raw,False) ;
-		left,right = self.block2(left,right) ;
-		left,right = self.block3(left,right) ;
-		left,right = self.block4(left,right) ;
-		left,right = self.block5(left,right) ;
-		left,right = self.block6(left,right) ;
-		left,right = self.block7(left,right) ;
-		left,right = self.block8(left,right) ;
-		left,right = self.block9(left,right) ;
-		left,right = self.block10(left,right) ;
-		left,right = self.block11(left,right) ;
-		left,right = self.block12(left,right) ;
-		left,right = self.block13(left,right) ;
-		left,right = self.block14(left,right) ;
-		left,right = self.block15(left,right) ;
-		left,right = self.block16(left,right) ;
-		left,right = self.block17(left,right) ;
-		left,right = self.block18(left,right) ;
-		left,right = self.block19(left,right) ;
-		left,right = self.block20(left,right) ;
-		return right;
-
-
-class DemosaicNetLoss(nn.Module):
-    def __init__(self):
-        super(DemosaicNetLoss,self).__init__();
-        self.pixel_loss = torch.nn.MSELoss();
-        self.perceptural_loss = 0;
-        self.CropLayer = layers.CropLayer();
-    def forward(self,inputs,gt):
-        gt = self.CropLayer(gt,inputs);
-        loss = self.pixel_loss(inputs,gt);
-        return loss;
+    def __init__(self,args):
+        super(DeepISP,self).__init__();
+        self.args = args;
+        self.pack = layers.PackBayerMosaicLayer();
+        if not self.args.predemosaic:
+            self.block1 = layers.isp_block(4);
+        else:
+            self.block1 = layers.isp_block(3);
+        self.block2 = layers.isp_block(64);
+        self.block3 = layers.isp_block(64);
+        self.block4 = layers.isp_block(64);
+        self.block5 = layers.isp_block(64);
+        self.block6 = layers.isp_block(64);
+        self.block7 = layers.isp_block(64);
+        self.block8 = layers.isp_block(64);
+        self.block9 = layers.isp_block(64);
+        self.block10 = layers.isp_block(64);
+        self.block11 = layers.isp_block(64);
+        self.block12 = layers.isp_block(64);
+        self.block13 = layers.isp_block(64);
+        self.block14 = layers.isp_block(64);
+        self.block15 = layers.isp_block(64);
+        self.block16 = layers.isp_block(64);
+        self.block17 = layers.isp_block(64);
+        self.block18 = layers.isp_block(64);
+        self.block19 = layers.isp_block(64);
+        if not self.args.predemosaic:
+            self.block20 = nn.Conv2d(64,12,kernel_size = 1,stride = 1);
+        else:
+            self.block20 = layers.isp_block(64);
+        self.unpack = nn.ConvTranspose2d(12,3,2,stride = 2,groups = 3);
+    def init_params(self):
+        for m in self.modules():
+            if isinstance(m,nn.Linear):
+                nn.init.normal(m.weight,std = 0.001);
+                nn.init.constant(m.bias,0);
+            if isinstance(m,nn.Conv2d):
+                nn.init.kaiming_normal(m.weight,mode = 'fan_out');
+                nn.init.constant(m.bias,0);
+    def forward(self,raw,sigma):
+        if not self.args.predemosaic:
+            raw = self.pack(raw);
+        left,right  = self.block1(raw,raw,False);
+        left,right = self.block2(left,right);
+        left,right = self.block3(left,right);
+        left,right = self.block4(left,right);
+        left,right = self.block5(left,right);
+        left,right = self.block6(left,right);
+        left,right = self.block7(left,right);
+        left,right = self.block8(left,right);
+        left,right = self.block9(left,right);
+        left,right = self.block10(left,right);
+        left,right = self.block11(left,right);
+        left,right = self.block12(left,right);
+        left,right = self.block13(left,right);
+        left,right = self.block14(left,right);
+        left,right = self.block15(left,right);
+        left,right = self.block16(left,right);
+        left,right = self.block17(left,right);
+        left,right = self.block18(left,right);
+        left,right = self.block19(left,right);
+        if not self.args.predemosaic:
+            right =  torch.cat((left,right),1);
+            right = self.block20(right);
+            right = self.unpack(right);
+        else:
+            left,right = self.block20(left,right);
+        return right;
 def Draw_Graph():
     from torchviz import dot
     import pydot
