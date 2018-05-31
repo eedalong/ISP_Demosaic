@@ -322,7 +322,8 @@ class pixel_perceptural_loss(nn.Module):
 
         target = self.CropLayer(target,outputs);
         percep = self.percep(target,outputs)
-        pixel = 0;
+        pixel = torch.sum(torch.abs(target - outputs)) / (target.size(0)*target.size(1)*target.size(2)*target.size(3));
+        print('dalong log : check pixel and percep loss = {} {}'.format(pixel,percep));
         loss = pixel + self.weight * percep;
         #print('dalong log : check loss of two type = {}  {}'.format(pixel,percep));
         return loss ;
