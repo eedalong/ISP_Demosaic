@@ -95,9 +95,16 @@ def main(args):
     init_model = os.path.join(args.checkpoint_folder,args.init_model);
     test_dataset = datasets.dataSet(args);
     test_loader = torch.utils.data.DataLoader(test_dataset,batch_size = args.batchsize,shuffle = False,num_workers = int(args.workers));
-    #model = models.DemosaicNet(args.depth,args.width,args.kernel_size,pad = args.pad,batchnorm = args.batchnorm,bayer_type = args.bayer_type);
-    #model = models.BayerNetwork(args);
-    model = dalong_models.DeepISP(args)
+    models = {'DemosaicNet':dalong_models.DemosaicNet(args.depth,args.width,args.kernel_size,pad = args.pad,batchnorm = args.batchnorm,bayer_type = args.bayer_type),
+              'DeepISP':dalong_models.DeepISP(args),
+              'SIDNet':dalong_models.SIDNet(args),
+              'BayerNet':dalong_models.BayerNetwork(args)
+              }
+    #model = dalong_models.DemosaicNet(args.depth,args.width,args.kernel_size,pad = args.pad,batchnorm = args.batchnorm,bayer_type = args.bayer_type);
+    model = models.get(args.model,'dalong');
+    if model == 'dalong':
+        print('Error Model Choice ');
+        exit();
     model = torch.nn.DataParallel(model,device_ids = args.gpu_use);
     if args.init_model != '':
         print('dalong log : init model with {}'.format(args.init_model))
@@ -138,6 +145,7 @@ if __name__ == '__main__':
     parser.add_argument('--init_model',type = str,default = '',help = 'model name for testing ');
     parser.add_argument('--pretrained',type = int,default = 0,help = 'whether to use pretrianed model to init the model ');
     parser.add_argument('--predemosaic',type = int,default=0,help = 'whether to predemosaic with bilinear method')
+    parser.add_argument('--model',type = str,default = '',help='choose a model to test')
     args = parser.parse_args();
     args.gpu_use = [int(item) for item in list(args.gpu_use[0].split(','))];
     print('all the params set  = {}'.format(args));

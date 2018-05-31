@@ -8,7 +8,8 @@ import dalong_models
 import torch.nn as nn
 import os
 import utils
-import datasets as dataset
+import datasets_dng2jpg
+import datasets_dng2dng
 import argparse
 import dalong_loss
 losses = utils.AverageMeter();
@@ -34,15 +35,35 @@ def train(train_loader,model,criterion,optimizer,epoch,args):
             log_str = 'Epoch:[{0}] [{1} / {2}] \t  Time_Consumed  = {3} , Loss = {4}'.format(epoch,i,len(train_loader),end - start,losses.value);
             print(log_str);
     recorder.add_record('loss',losses.value,epoch);
+def release_memory(models,args):
+    # TODO
+    pass;
+
 def main(args):
-    train_dataset = dataset.dataSet(args);
-    print('dalong log : begin to load data');
+
+    datasets = {'dng2dng':datasets_dng2dng.dataSet(args),
+                'dng2jpg':datasets_dng2jpg.dataSet(args)
+                }
+    models = {'DemosaicNet':dalong_models.DemosaicNet(args.depth,args.width,args.kernel_size,pad = args.pad,batchnorm = args.batchnorm,bayer_type = args.bayer_type),
+              'DeepISP':dalong_models.DeepISP(args),
+              'SIDNet':dalong_models.SIDNet(args),
+              'BayerNet':dalong_models.BayerNetwork(args)
+              }
+    Losses ={'L1Loss':dalong_loss.L1Loss(),
+             'L2Loss':dalong_loss.L2Loss(),
+             'SSIM':dalong_loss.SSIM(),
+             'MSSIM':dalong_loss.MSSSIM(),
+             'pixel_perceptural':dalong_loss.pixel_perceptural_loss()
+             }
+    train_dataset =  datasets.get(args.dataset,'dalong');
+    model = models.get(args.model,'dalong');
+    criterion  = Losses.get(args.loss,'dalong')
+    release_memory(models,args);
+    if model == 'dalong' or criterion == 'dalong' or train_dataset == 'dalong':
+        print('Not A model or Loss or Not A Datasets');
+        exit();
     train_loader = torch.utils.data.DataLoader(train_dataset,args.batchsize,shuffle = True,num_workers = int(args.workers));
-    model = dalong_models.DemosaicNet(args.depth,args.width,args.kernel_size,pad = args.pad,batchnorm = args.batchnorm,bayer_type = args.bayer_type);
-    #model = models.BayerNetwork(args);
-    #model = dalong_models.DeepISP(args);
-    print('dalong log : model build finished ');
-    criterion = dalong_loss.pixel_perceptural_loss();
+    criterion = dalong_loss.L1Loss();
     print('dalong log : Loss build finished ');
     model = torch.nn.DataParallel(model,device_ids = list(args.gpu_use));
     model = model.cuda();
@@ -86,12 +107,20 @@ if __name__ == '__main__':
     # if there is a sigma_info file for using ,it is like sigma_shot ,sigma_read
     # if not ,we use our own NoiseEstimation module for noise estimation
     parser.add_argument('--sigma_info',type = bool,default = False,help = 'if this dataset has sigma_info file to use ');
+    parser.add_argument('--model',type = str,default = 'DemosaicNet',help = 'choose to a Net arch to train ');
+    parser.add_argument('--loss',type = str,default = '',help = 'choose a loss ')
+    parser.add_argumrnt('--dataset',type = str,default = '',help  = 'choose a dataset to use ');
     args = parser.parse_args();
     args.gpu_use = [int(item) for item in list(args.gpu_use[0].split(','))];
+    print(args);
+    exit();
     print('all the params set  = {}'.format(args));
     if not os.path.exists(args.checkpoint_folder):
         os.makedirs(args.checkpoint_folder);
         print('dalong log : all the models will be saved under {} \n'.format(args.checkpoint_folder));
+        # save all the parameters set above under agrs.checkpoint_folder
+        log_file = open(os.path.join(args.checkpoint_folder,'log_file'),'w');
+        log_file.close();
     main(args);
 
 

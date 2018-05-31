@@ -312,9 +312,10 @@ class FeatureExtractor_VGG(nn.Module):
         return output;
 
 class pixel_perceptural_loss(nn.Module):
-    def __init__(self,weight = 1):
+    def __init__(self,pixel_weight = 1,percep_weight = 1):
         super(pixel_perceptural_loss,self).__init__();
-        self.weight = weight;
+        self.pixel_weight = pixel_weight;
+        self.percep_weight = percep_weight;
         self.pixel = nn.L1Loss();
         self.percep = VGGLoss();
         self.CropLayer = layers.CropLayer();
@@ -324,6 +325,6 @@ class pixel_perceptural_loss(nn.Module):
         percep = self.percep(target,outputs)
         pixel = torch.sum(torch.abs(target - outputs)) / (target.size(0)*target.size(1)*target.size(2)*target.size(3));
         print('dalong log : check pixel and percep loss = {} {}'.format(pixel,percep));
-        loss = pixel + self.weight * percep;
+        loss = self.pixel_weight*pixel + self.percep_weight * percep;
         #print('dalong log : check loss of two type = {}  {}'.format(pixel,percep));
         return loss ;
