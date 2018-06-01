@@ -29,14 +29,14 @@ def pack_raw(raw,args):
 
 
 def RandomCrop(size,raw,data):
-
-	h,w = raw.shape[0],raw.shape[1];
-	th,tw = size;
-	x1 = random.randint(0,w -tw);
-	y1 = random.randint(0,h - th);
-
-    return raw[y1:y1+th,x1:x1+tw,:],data[y1*2:y1*2+th*2,x1*2:x1*2+tw*2,:];
-
+    h,w = raw.shape[0],raw.shape[1];
+    th,tw = size;
+    x1 = random.randint(0,w -tw);
+    y1 = random.randint(0,h - th);
+    if random.random() < 0.5:
+        return raw[y1:y1+th,x1:x1+tw,:],data[y1*2:y1*2+th*2,x1*2:x1*2+tw*2,:];
+    else:
+        return raw,data;
 def RandomFLipH(raw,data):
 	if random.random()< 0.5:
 		return np.flip(raw,axis = 1),np.flip(data,axis = 1);

@@ -31,6 +31,13 @@ class Recorder:
         plt.plot(self.records[record_name].keys(),self.records[record_name].values());
         figure.savefig(os.path.join(self.save_dir,record_name+'.png'));
 
+def save_logs(root_path,args):
+    log_file = open(os.path.join(root_path,'log_file'),'w');
+    log = vars(args);
+    for key in log :
+        log_file.write(key + ' : ' + str(log[key]) + '\n');
+    log_file.close();
+
 
 def main():
 	print('This is for saving models');

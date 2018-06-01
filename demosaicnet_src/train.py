@@ -109,18 +109,17 @@ if __name__ == '__main__':
     parser.add_argument('--sigma_info',type = bool,default = False,help = 'if this dataset has sigma_info file to use ');
     parser.add_argument('--model',type = str,default = 'DemosaicNet',help = 'choose to a Net arch to train ');
     parser.add_argument('--loss',type = str,default = '',help = 'choose a loss ')
-    parser.add_argumrnt('--dataset',type = str,default = '',help  = 'choose a dataset to use ');
+    parser.add_argument('--dataset',type = str,default = '',help  = 'choose a dataset to use ');
     args = parser.parse_args();
     args.gpu_use = [int(item) for item in list(args.gpu_use[0].split(','))];
-    print(args);
-    exit();
     print('all the params set  = {}'.format(args));
     if not os.path.exists(args.checkpoint_folder):
         os.makedirs(args.checkpoint_folder);
         print('dalong log : all the models will be saved under {} \n'.format(args.checkpoint_folder));
-        # save all the parameters set above under agrs.checkpoint_folder
-        log_file = open(os.path.join(args.checkpoint_folder,'log_file'),'w');
-        log_file.close();
+
+
+    utils.save_logs(args.checkpoint_folder,args);
+
     main(args);
 
 
