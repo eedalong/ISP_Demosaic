@@ -16,13 +16,24 @@ losses = utils.AverageMeter();
 recorder = utils.Recorder(save_dir ='./records/');
 def train(train_loader,model,criterion,optimizer,epoch,args):
     model.train(True);
+    print('dalong log : check model type = {}'.format(isinstance(model,torch.nn.DataParallel)))
     start = time.time();
     for i , (raw,data,sigma) in enumerate(train_loader):
-        raw_var = Variable(raw).cuda();
-        data_var = Variable(data).cuda();
+
+        print('dalog log :forwardddddddddddddddd');
+        raw_var = Variable(raw[0]).cuda();
+        data_var = Variable(data[0]).cuda();
         sigma = Variable(sigma).cuda();
-        out = model(raw,sigma);
+        print('dalong log : check raw_var size = {}'.format(raw_var.size()));
+
+        print('dalong log : check data_var size = {}'.format(data_var.size()));
+        out = model(raw_var,sigma);
+        print('dalong log : check out size = {}'.format(out.size()));
+
+
         loss = criterion(out,data_var);
+
+
         losses.update(loss.data[0],raw.size(0));
         # add to writer
 
@@ -32,7 +43,9 @@ def train(train_loader,model,criterion,optimizer,epoch,args):
 
         end = time.time();
         if i % args.print_freq ==0:
+
             log_str = 'Epoch:[{0}] [{1} / {2}] \t  Time_Consumed  = {3} , Loss = {4}'.format(epoch,i,len(train_loader),end - start,losses.value);
+            start = time.time();
             print(log_str);
     recorder.add_record('loss',losses.value,epoch);
 def release_memory(models,args):
@@ -60,12 +73,12 @@ def main(args):
     criterion  = Losses.get(args.loss,'dalong')
     release_memory(models,args);
     if model == 'dalong' or criterion == 'dalong' or train_dataset == 'dalong':
-        print('Not A model or Loss or Not A Datasets');
+        print('Not A model or Loss or Not A Datasets {} {} {}'.format(args.model,args.dataset,args.loss));
         exit();
     train_loader = torch.utils.data.DataLoader(train_dataset,args.batchsize,shuffle = True,num_workers = int(args.workers));
     criterion = dalong_loss.L1Loss();
     print('dalong log : Loss build finished ');
-    model = torch.nn.DataParallel(model,device_ids = list(args.gpu_use));
+    model = torch.nn.DataParallel(model);
     model = model.cuda();
     optimizer = torch.optim.Adam(model.parameters(),lr = args.lr,betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-08);
     for epoch in range(args.max_epoch):
@@ -110,6 +123,9 @@ if __name__ == '__main__':
     parser.add_argument('--model',type = str,default = 'DemosaicNet',help = 'choose to a Net arch to train ');
     parser.add_argument('--loss',type = str,default = '',help = 'choose a loss ')
     parser.add_argument('--dataset',type = str,default = '',help  = 'choose a dataset to use ');
+    parser.add_argument('--SID',type = int,default = 0,help = 'whther to use SID datasets and ratios information');
+    parser.add_argument('--FastSID',type = int,default = 0,help = 'whether to use the dataset after minimal prerpocess');
+    parser.add_argument('--BATCH',type = int,default = 4,help = 'Load BATCH inputs');
     args = parser.parse_args();
     args.gpu_use = [int(item) for item in list(args.gpu_use[0].split(','))];
     print('all the params set  = {}'.format(args));

@@ -257,6 +257,7 @@ class SIDNet(nn.Module):
 
     def forward(self,inputs,noise_info):
         packed_input  = self.pack_mosaic(inputs);
+        #print('dalong log : check inputs shape = {}'.format(packed_input.size()));
         down_layer1 = self.down_layer1(packed_input);
 #        print('dalong log : check down_layer1 size = {}'.format(down_layer1.size()))
         down_pool1 = F.max_pool2d(down_layer1,kernel_size = 2,stride = 2);

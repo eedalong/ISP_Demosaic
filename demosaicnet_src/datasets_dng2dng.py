@@ -8,6 +8,7 @@ import NoiseEstimation
 import create_CFA
 import random
 import rawpy
+import time
 '''
 This is an implementation for dataset.py for Joint Demosaic & Denoising
 
@@ -15,39 +16,41 @@ Datasets are from MSR Dataset and S7-Samsung-image
 
 '''
 def pack_raw(raw,args):
-    im = raw.raw_image_visiable.astype(mp.float32);
-    im = np.max((im - args.black_point) / (args.white_point - args.black_point));
-    im = np.minimum(im,1.0);
+    im = raw.raw_image_visible.astype(np.float32);
     im = np.expand_dims(im,axis = 2);
-
-    out = np.concatenate(im[::2,::2,:],
+    im = (im - args.black_point) / (args.white_point - args.black_point);
+    out = np.concatenate((im[::2,::2,:],
                          im[::2,1::2,:],
                          im[1::2,::2,:],
-                         im[1::2,1::2,:],
+                         im[1::2,1::2,:]),
                          axis = 2);
     return out ;
 
+def unpack_raw(raw):
+    output =  np.zeros((raw.shape[0],3,2*raw.shape[2],2*raw.shape[3]));
+    output[:,0,::2,::2] = raw[:,0,:,:];
+    output[:,0,::2,1::2] = raw[:,1,:,:];
+    output[:,2,1::2,::2] = raw[:,2,:,:];
+    output[:,1,1::2,1::2] = raw[:,3,:,:];
+    return output ;
 
 def RandomCrop(size,raw,data):
     h,w = raw.shape[0],raw.shape[1];
     th,tw = size;
     x1 = random.randint(0,w -tw);
     y1 = random.randint(0,h - th);
-    if random.random() < 0.5:
-        return raw[y1:y1+th,x1:x1+tw,:],data[y1*2:y1*2+th*2,x1*2:x1*2+tw*2,:];
-    else:
-        return raw,data;
+    return raw[y1:y1+th,x1:x1+tw,:],data[y1*2:y1*2+th*2,x1*2:x1*2+tw*2,:];
 def RandomFLipH(raw,data):
 	if random.random()< 0.5:
-		return np.flip(raw,axis = 1),np.flip(data,axis = 1);
+		return np.flip(raw,axis = 1).copy(),np.flip(data,axis = 1).copy();
 	return raw,data;
-def RamdomFlipV(raw,data):
+def RandomFlipV(raw,data):
  	if random.random()< 0.5:
-		return np.flip(raw,axis = 0),np.flip(data,axis = 0);
+		return np.flip(raw,axis = 0).copy(),np.flip(data,axis = 0).copy();
 	return raw,data;
-def RandomTraspose(raw,data):
+def RandomTranspose(raw,data):
     if random.random()< 0.5:
-        return np.transpose(raw,1,0,2),np.transpose(data,1,0,2);
+        return np.transpose(raw,(1,0,2)).copy(),np.transpose(data,(1,0,2)).copy();
     return raw,data;
 
 class dataSet(data.Dataset):
@@ -60,44 +63,78 @@ class dataSet(data.Dataset):
         self.Random = args.Random;
         self.Evaluate = args.Evaluate;
         self.size = (args.size,args.size);
+        self.inputs = {};
+        self.gt = {};
     def __getitem__(self,index):
 
+        data_time_start = time.time();
         '''
         this is for dng and dng training
         dalong : Transfer all the data to the same format and the same
         folder structure
-        input are in $root/input/*.dng;
-        groundtruths are in $root/groundtruth/*.dng
+        train.txt  :  input path  target path
         here all raw images are scaled to 0-1 in preprocess processdure
         '''
-        input_path = os.path.join(self.root,'input');
-        input_path = os.path.join(input_path,self.pathlist[index][:-1]);
-        gt_path = os.path.join(self.root,'groundtruth');
-        gt_path = os.path.join(gt_path,self.pathlist[index][:-1]);
+        paths = self.pathlist[index][:-1].split();
+        input_path = os.path.join(self.root,paths[0]);
+        gt_path = os.path.join(self.root,paths[1]);
         raw = self.raw_loader(input_path);
         data = self.loader(gt_path);
-        raw  = pack_raw(raw,self.args);
+        raw_inputs = np.zeros((self.args.BATCH ,4,self.args.size,self.args.size));
+        data_inputs = np.zeros((self.args.BATCH,3,self.args.size*2,self.args.size * 2));
+        if not self.args.FastSID:
+            raw  = pack_raw(raw,self.args);
         if self.Random :
-            raw,data = RandomCrop(self.size,raw,data);
-            raw,data = RandomFLipH(raw,data);
-            raw,data = RandomFlipV(raw,data);
-            raw,data = RandomTranspose(raw,data);
+            for index in range(self.args.batchsize):
+                tmp_raw,tmp_data = RandomCrop(self.size,raw,data);
+                tmp_raw,tmp_data = RandomFLipH(tmp_raw,tmp_data);
+                tmp_raw,tmp_data = RandomFlipV(tmp_raw,tmp_data);
+                tmp_raw,tmp_data = RandomTranspose(tmp_raw,tmp_data);
+                raw_inputs[index] =tmp_raw.transpose(2,0,1).copy();
+                data_inputs[index] = tmp_data.transpose(2,0,1).copy()
+
         # raw and data should be scaled to 0-1
-        raw = torch.FloatTensor(raw.transpose(2,0,1));
-        data = torch.FloatTensor(data.transpose(2,0,1));
-        return raw,data;
+        raw_inputs = unpack_raw(raw_inputs);
+
+        raw_inputs = torch.FloatTensor(raw_inputs);
+        data_inputs = torch.FloatTensor(data_inputs);
+        if self.args.SID:
+            in_exposure = gt_exposure = 1;
+            if self.args.FastSID:
+                in_exposure = float(paths[0][17:-5]);
+                gt_exposure = float(paths[1][16:-5]);
+            else:
+                in_exposure = float(paths[0][22:-5]);
+                gt_exposure = float(paths[1][21:-5]);
+
+            ratio = min(gt_exposure / in_exposure,300);
+            raw = raw * ratio ;
+        sigma = 0;
+        data_time_end = time.time();
+        #print('dalong log : check data load time = {}s'.format(data_time_end - data_time_start));
+        return raw_inputs,data_inputs,sigma;
 
     def __len__(self):
 		return len(self.pathlist);
 
     def loader(self,filepath):
-        image = rawpy.imread(filepath);
-        image = image.postprocess(use_camera_wb = True,half_size = False,no_auto_bright = True,output_bps = 16);
-        image = np.float32(image / 65535.0);
-        return image;
+        global gt;
+        if self.args.FastSID:
+            output = np.load(filepath).astype('float32') / 65535.0;
+            return output;
+        else:
+            image = rawpy.imread(filepath);
+            image = image.postprocess(use_camera_wb = True,half_size = False,no_auto_bright = True,output_bps = 16);
+            image = np.float32(image / 65535.0);
+            return image;
 
     def raw_loader(self,filepath):
-        return rawpy.imread(filepath);
+        global inputs
+        if self.args.FastSID:
+            output = np.load(filepath);
+            return output;
+        else:
+            return rawpy.imread(filepath);
 
     def get_file_list(self):
         path = os.path.join(self.root,self.flist);
