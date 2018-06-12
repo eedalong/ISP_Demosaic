@@ -97,7 +97,7 @@ class BayerNetwork(nn.Module):
     def __init__(self,args):
         super(BayerNetwork, self).__init__()
 
-        self.mosaic_mask = layers.BayerMosaicLayer(bayer_type = args.bayer_type);
+        self.mosaic_mask = layers.BayerMosaicLayer(bayer_type = 'GRBG');
         self.crop_like = layers.CropLayer();
         self.depth = args.depth
         self.width = args.width
@@ -131,7 +131,7 @@ class BayerNetwork(nn.Module):
     def init_params(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                init.kaiming_normal(m.weight, mode='fan_out');
+                init.kaiming_normal_(m.weight, mode='fan_out');
                 if m.bias is not None:
                     init.constant(m.bias, 0);
             elif isinstance(m, nn.BatchNorm2d):
@@ -142,7 +142,7 @@ class BayerNetwork(nn.Module):
                 if m.bias is not None:
                     init.constant(m.bias, 0)
     def init_with_pretrained(self):
-        print('dalong log : init the model with pretrianed models');
+        #print('dalong log : init the model with pretrianed models');
         param_name = open('../pretrained/bayer/params/param_name').readlines();
         index  = 0;
         model_parameters = self.parameters();
@@ -244,20 +244,20 @@ class SIDNet(nn.Module):
     def init_params(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m,nn.ConvTranspose2d):
-                init.kaiming_normal(m.weight, mode='fan_out');
+                init.kaiming_normal_(m.weight, mode='fan_out');
                 if m.bias is not None:
-                    init.constant(m.bias, 0);
+                    init.constant_(m.bias, 0);
             elif isinstance(m, nn.BatchNorm2d):
-                init.constant(m.weight, 1);
-                init.constant(m.bias, 0);
+                init.constant_(m.weight, 1);
+                init.constant_(m.bias, 0);
             elif isinstance(m, nn.Linear):
                 init.normal(m.weight, std=0.001);
                 if m.bias is not None:
-                    init.constant(m.bias, 0)
+                    init.constant_(m.bias, 0)
 
     def forward(self,inputs,noise_info):
         packed_input  = self.pack_mosaic(inputs);
-        #print('dalong log : check inputs shape = {}'.format(packed_input.size()));
+       # print('dalong log : check inputs shape = {}'.format(packed_input.size()));
         down_layer1 = self.down_layer1(packed_input);
 #        print('dalong log : check down_layer1 size = {}'.format(down_layer1.size()))
         down_pool1 = F.max_pool2d(down_layer1,kernel_size = 2,stride = 2);

@@ -11,6 +11,7 @@ class AverageMeter:
         self.value = 0;
     def update(self,value,count = 1):
         self.value = (self.value * self.n + value * count) / (self.n + count);
+        self.n = self.n + count;
         return ;
 
 

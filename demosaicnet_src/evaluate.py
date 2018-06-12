@@ -49,7 +49,7 @@ def test(train_loader,model):
     start = time.time();
     c = 0;
     crop = 0;
-    for i ,(raw,data,sigma_info) in  enumerate(train_loader):
+    for i ,(raw,data) in  enumerate(train_loader):
         tmp_start = time.time();
         if not Flag :
             raw_pad = np.zeros((raw.shape[0],raw.shape[1],raw.shape[2]+2*c[0],raw.shape[3]+2*c[1]));
@@ -58,9 +58,8 @@ def test(train_loader,model):
                 raw_pad[index,:,:,:] = np.pad(raw[index,:,:,:],[(0,0),(c[0],c[0]),(c[1],c[1])],'reflect');
             raw = torch.FloatTensor(raw_pad);
         raw_var = Variable(raw).cuda();
-        sigma_info = Variable(sigma_info).cuda();
         forward_start = time.time();
-        output = model(raw_var,sigma_info);
+        output = model(raw_var,0);
         forward_end = time.time();
         print('dalong log : check forward time  = {}s'.format(forward_end - forward_start));
         batchSize = raw_var.size(0);
@@ -75,20 +74,20 @@ def test(train_loader,model):
             output = output[:,:,int(crop[0]%2):-(int(crop[0]%2)),int(crop[1]%2):-int(crop[1]%2)];
         data = data.data.cpu().numpy();
         ssim_start = time.time();
-        #ssim_value = ssim(torch.FloatTensor(output),torch.FloatTensor(data));
+        ssim_value = ssim(torch.FloatTensor(output),torch.FloatTensor(data));
         ssim_end = time.time();
         print('dalong log : check ssim compute time = {}s'.format(ssim_end - ssim_start));
-        #ssim_meter.update(ssim_value,1);
+        ssim_meter.update(ssim_value,1);
         image_index = image_index + 1;
         for index in range(batchSize):
             psnr_start = time.time();
             data_image = (np.clip(output[index,:,:,:] / 0.00390625 + 0.5 ,0,255)).astype('uint8')
             save_image = Image.fromarray(data_image.transpose(2,1,0));
-            save_image.save('image.jpg');
+            save_image.save('results/image'+str(image_index)+'.jpg');
             input_image = (data[index,:,:,:]*255).astype('uint8');
             psnr = PSNR(data_image,input_image,crop);
             input_image = Image.fromarray(input_image.transpose(2,1,0));
-            input_image.save('input.jpg');
+            input_image.save('results/input'+str(image_index)+'.jpg');
             psnr_meter.update(psnr);
             tmp_end = time.time();
             print('dalong log : check for psnr {} consumes {}s'.format(image_index,tmp_end - psnr_start ));
@@ -97,7 +96,7 @@ def test(train_loader,model):
             #data_image.save('results/'+str(index)+'.jpg');
             print('dalong log the final psnr value is {}'.format(psnr_meter.value));
 
-            #print('dalong log the final ssim value is {}'.format(ssim_meter.value));
+            print('dalong log the final ssim value is {}'.format(ssim_meter.value));
 def release_memory(model,args):
         pass
 def main(args):
@@ -116,8 +115,8 @@ def main(args):
     if model == 'dalong' or test_dataset == 'dalong':
         print('Not A model or Loss or Not A Datasets {} {} {}'.format(args.model,args.dataset));
         exit();
-
-    test_loader = torch.utils.data.DataLoader(test_dataset,args.batchsize,shuffle = False,num_workers = int(args.workers));
+    collate_fn = datasets_dng2dng.collate_fn;
+    test_loader = torch.utils.data.DataLoader(test_dataset,args.batchsize,shuffle = False,num_workers = int(args.workers),collate_fn = collate_fn);
 
     print('dalong log : begin to load data');
 
@@ -168,6 +167,8 @@ if __name__ == '__main__':
     parser.add_argument('--dataset',type=str,default ='',help = 'chosse a dataset to use ');
     parser.add_argument('--SID',type = int,default = 0,help = 'whether to use SID datasets and ratios information');
     parser.add_argument('--FastSID',type = int,default = 0,help = 'whether to use the datasets after minimal preprocess');
+    parser.add_argument('--GET_BATCH',type= int,default = 1,help = 'Load GET_BATCH data');
+
     args = parser.parse_args();
     args.gpu_use = [int(item) for item in list(args.gpu_use[0].split(','))];
     print('all the params set  = {}'.format(args));

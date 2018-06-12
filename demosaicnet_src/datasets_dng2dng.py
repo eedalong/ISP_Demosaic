@@ -9,6 +9,7 @@ import create_CFA
 import random
 import rawpy
 import time
+import threading
 '''
 This is an implementation for dataset.py for Joint Demosaic & Denoising
 
@@ -27,6 +28,8 @@ def pack_raw(raw,args):
     return out ;
 
 def unpack_raw(raw):
+    if len(raw.shape) == 3:
+        raw = np.expand_dims(raw,axis = 0);
     output =  np.zeros((raw.shape[0],3,2*raw.shape[2],2*raw.shape[3]));
     output[:,0,::2,::2] = raw[:,0,:,:];
     output[:,0,::2,1::2] = raw[:,1,:,:];
@@ -53,6 +56,13 @@ def RandomTranspose(raw,data):
         return np.transpose(raw,(1,0,2)).copy(),np.transpose(data,(1,0,2)).copy();
     return raw,data;
 
+def collate_fn(batch):
+    raw = batch[0][0];
+    data = batch[0][1]
+    for index in range(1,len(batch)):
+        raw = torch.cat((raw,batch[index][0]),0);
+        data = torch.cat((data,batch[index][1]),0);
+    return raw,data;
 class dataSet(data.Dataset):
     def __init__(self,args):
         super(dataSet,self).__init__();
@@ -65,8 +75,8 @@ class dataSet(data.Dataset):
         self.size = (args.size,args.size);
         self.inputs = {};
         self.gt = {};
+        self.index = 0;
     def __getitem__(self,index):
-
         data_time_start = time.time();
         '''
         this is for dng and dng training
@@ -80,20 +90,25 @@ class dataSet(data.Dataset):
         gt_path = os.path.join(self.root,paths[1]);
         raw = self.raw_loader(input_path);
         data = self.loader(gt_path);
-        raw_inputs = np.zeros((self.args.BATCH ,4,self.args.size,self.args.size));
-        data_inputs = np.zeros((self.args.BATCH,3,self.args.size*2,self.args.size * 2));
         if not self.args.FastSID:
             raw  = pack_raw(raw,self.args);
+        raw_inputs = raw.transpose(2,0,1);
+        raw_inputs = np.expand_dims(raw_inputs,axis = 0);
+        data_inputs = data.transpose(2,0,1);
+        data_inputs = np.expand_dims(data_inputs,axis = 0);
         if self.Random :
-            for index in range(self.args.batchsize):
+            raw_inputs = np.zeros((self.args.GET_BATCH ,4,self.args.size,self.args.size));
+            data_inputs = np.zeros((self.args.GET_BATCH,3,self.args.size*2,self.args.size * 2));
+            for read_index in range(self.args.GET_BATCH):
                 tmp_raw,tmp_data = RandomCrop(self.size,raw,data);
                 tmp_raw,tmp_data = RandomFLipH(tmp_raw,tmp_data);
                 tmp_raw,tmp_data = RandomFlipV(tmp_raw,tmp_data);
                 tmp_raw,tmp_data = RandomTranspose(tmp_raw,tmp_data);
-                raw_inputs[index] =tmp_raw.transpose(2,0,1).copy();
-                data_inputs[index] = tmp_data.transpose(2,0,1).copy()
+                raw_inputs[read_index] =tmp_raw.transpose(2,0,1).copy();
+                data_inputs[read_index] = tmp_data.transpose(2,0,1).copy()
 
-        # raw and data should be scaled to 0-1
+                # raw and data should be scaled to 0-1
+
         raw_inputs = unpack_raw(raw_inputs);
 
         raw_inputs = torch.FloatTensor(raw_inputs);
@@ -112,13 +127,12 @@ class dataSet(data.Dataset):
         sigma = 0;
         data_time_end = time.time();
         #print('dalong log : check data load time = {}s'.format(data_time_end - data_time_start));
-        return raw_inputs,data_inputs,sigma;
+        return raw_inputs,data_inputs;
 
     def __len__(self):
 		return len(self.pathlist);
 
     def loader(self,filepath):
-        global gt;
         if self.args.FastSID:
             output = np.load(filepath).astype('float32') / 65535.0;
             return output;
@@ -129,7 +143,6 @@ class dataSet(data.Dataset):
             return image;
 
     def raw_loader(self,filepath):
-        global inputs
         if self.args.FastSID:
             output = np.load(filepath);
             return output;
@@ -140,3 +153,4 @@ class dataSet(data.Dataset):
         path = os.path.join(self.root,self.flist);
         datafile = open(path);
         return datafile.readlines();
+

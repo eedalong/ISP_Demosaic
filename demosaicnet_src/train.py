@@ -16,19 +16,13 @@ losses = utils.AverageMeter();
 recorder = utils.Recorder(save_dir ='./records/');
 def train(train_loader,model,criterion,optimizer,epoch,args):
     model.train(True);
-    print('dalong log : check model type = {}'.format(isinstance(model,torch.nn.DataParallel)))
     start = time.time();
-    for i , (raw,data,sigma) in enumerate(train_loader):
+    for i , (raw,data) in enumerate(train_loader):
 
-        print('dalog log :forwardddddddddddddddd');
-        raw_var = Variable(raw[0]).cuda();
-        data_var = Variable(data[0]).cuda();
-        sigma = Variable(sigma).cuda();
-        print('dalong log : check raw_var size = {}'.format(raw_var.size()));
+        raw_var = Variable(raw).cuda();
+        data_var = Variable(data).cuda();
 
-        print('dalong log : check data_var size = {}'.format(data_var.size()));
-        out = model(raw_var,sigma);
-        print('dalong log : check out size = {}'.format(out.size()));
+        out = model(raw_var,0);
 
 
         loss = criterion(out,data_var);
@@ -69,20 +63,28 @@ def main(args):
              'pixel_perceptural':dalong_loss.pixel_perceptural_loss()
              }
     train_dataset =  datasets.get(args.dataset,'dalong');
+    collate_fn = torch.utils.data.dataloader.default_collate;
+    if args.dataset == 'dng2dng':
+        collate_fn = datasets_dng2dng.collate_fn;
     model = models.get(args.model,'dalong');
     criterion  = Losses.get(args.loss,'dalong')
     release_memory(models,args);
     if model == 'dalong' or criterion == 'dalong' or train_dataset == 'dalong':
         print('Not A model or Loss or Not A Datasets {} {} {}'.format(args.model,args.dataset,args.loss));
         exit();
-    train_loader = torch.utils.data.DataLoader(train_dataset,args.batchsize,shuffle = True,num_workers = int(args.workers));
+    train_loader = torch.utils.data.DataLoader(train_dataset,args.batchsize,shuffle = True,collate_fn = collate_fn,num_workers = int(args.workers));
     criterion = dalong_loss.L1Loss();
     print('dalong log : Loss build finished ');
     model = torch.nn.DataParallel(model);
     model = model.cuda();
     optimizer = torch.optim.Adam(model.parameters(),lr = args.lr,betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-08);
+
     for epoch in range(args.max_epoch):
         train(train_loader,model,criterion,optimizer,epoch,args);
+        if epoch > 0.5*args.max_epoch and args.lr_change:
+            optimizer = torch.optim.Adam(model.parameters(),lr = 1e-5,betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-08);
+            args.lr_change = 0;
+
         if (epoch +1) % args.save_freq == 0:
             path_checkpoint = '{0}/{1}_state_epoch{2}.pth'.format(args.checkpoint_folder,args.model_name,epoch+1);
             utils.save_checkpoint(model,path_checkpoint);
@@ -125,7 +127,9 @@ if __name__ == '__main__':
     parser.add_argument('--dataset',type = str,default = '',help  = 'choose a dataset to use ');
     parser.add_argument('--SID',type = int,default = 0,help = 'whther to use SID datasets and ratios information');
     parser.add_argument('--FastSID',type = int,default = 0,help = 'whether to use the dataset after minimal prerpocess');
-    parser.add_argument('--BATCH',type = int,default = 4,help = 'Load BATCH inputs');
+    parser.add_argument('--TRAIN_BATCH',type = int,default = 4,help = 'train BATCH inputs');
+    parser.add_argument('--GET_BATCH',type = int,default = 64,help = 'Load GET_BATCH inputs')
+    parser.add_argument('--lr_change',type = int,default = 1);
     args = parser.parse_args();
     args.gpu_use = [int(item) for item in list(args.gpu_use[0].split(','))];
     print('all the params set  = {}'.format(args));
