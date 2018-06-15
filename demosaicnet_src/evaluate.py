@@ -41,6 +41,7 @@ def PSNR(img1,img2,crop,peak_value = 255):
     if crop[0] !=0 and crop[1] !=0:
         mse = np.mean((img1[:,crop[0]:-crop[0],crop[1]:-crop[1]] - img2[:,crop[0]:-crop[0],crop[1]:-crop[1]])**2);
     else:
+        print('dalong log : without crop')
         mse = np.mean((img1 - img2)**2);
     return 10*np.log10((peak_value**2)/mse );
 def test(train_loader,model):
@@ -65,7 +66,7 @@ def test(train_loader,model):
         batchSize = raw_var.size(0);
         output = output.data.cpu().numpy();
         if Flag:
-            crop = (np.array(raw.shape)[-2:] - np.array(output.shape[-2:])) / 2;
+            crop = (np.array(data.shape)[-2:] - np.array(output.shape[-2:])) / 2;
             c = crop + crop % 2;
             print('dalong log : check c  ={}'.format(c));
             Flag = 0;
@@ -74,7 +75,8 @@ def test(train_loader,model):
             output = output[:,:,int(crop[0]%2):-(int(crop[0]%2)),int(crop[1]%2):-int(crop[1]%2)];
         data = data.data.cpu().numpy();
         ssim_start = time.time();
-        ssim_value = ssim(torch.FloatTensor(output),torch.FloatTensor(data));
+        ssim_value = 0;
+        #ssim_value = ssim(torch.FloatTensor(output),torch.FloatTensor(data));
         ssim_end = time.time();
         print('dalong log : check ssim compute time = {}s'.format(ssim_end - ssim_start));
         ssim_meter.update(ssim_value,1);

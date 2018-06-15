@@ -31,7 +31,7 @@ def unpack_raw(raw):
     if len(raw.shape) == 3:
         raw = np.expand_dims(raw,axis = 0);
     output =  np.zeros((raw.shape[0],3,2*raw.shape[2],2*raw.shape[3]));
-    output[:,0,::2,::2] = raw[:,0,:,:];
+    output[:,1,::2,::2] = raw[:,0,:,:];
     output[:,0,::2,1::2] = raw[:,1,:,:];
     output[:,2,1::2,::2] = raw[:,2,:,:];
     output[:,1,1::2,1::2] = raw[:,3,:,:];
@@ -121,9 +121,9 @@ class dataSet(data.Dataset):
             else:
                 in_exposure = float(paths[0][22:-5]);
                 gt_exposure = float(paths[1][21:-5]);
-
             ratio = min(gt_exposure / in_exposure,300);
-            raw = raw * ratio ;
+            raw_inputs = raw_inputs * ratio ;
+
         sigma = 0;
         data_time_end = time.time();
         #print('dalong log : check data load time = {}s'.format(data_time_end - data_time_start));

@@ -175,7 +175,7 @@ class SIDNet(nn.Module):
     def __init__(self,args):
         self.args = args;
         super(SIDNet,self).__init__();
-        self.pack_mosaic = layers.PackBayerMosaicLayer(bayer_type = 'GRBG');
+        self.pack_layer = layers.PackBayerMosaicLayer();
         self.down_layer1  = nn.Sequential(
             nn.Conv2d(4,32,kernel_size = 3,stride = 1,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
@@ -238,8 +238,9 @@ class SIDNet(nn.Module):
 
         self.up_layer5 = nn.Conv2d(32,12,kernel_size = 1,stride = 1);
         self.output_layer = nn.ConvTranspose2d(12,3,2,stride = 2,groups = 3);
-
         self.init_params();
+        if args.pretrained:
+            self.init_with_pretrained();
 
     def init_params(self):
         for m in self.modules():
@@ -254,11 +255,25 @@ class SIDNet(nn.Module):
                 init.normal(m.weight, std=0.001);
                 if m.bias is not None:
                     init.constant_(m.bias, 0)
+    def init_with_pretrained(self):
+        print('dalong log : init with the pretrained params');
+        param_name = open('../pretrained/SID/params/param_name');
+        model_parameters = self.parameters();
+        param_index = 0;
+        root_path = '../pretrained/SID/params/'
+        total = len(param_name.readlines());
+        while param_index < total:
+            weights  = np.load(root_path+str(param_index)+'.npy');
+            if len(weights.shape) ==4:
+                weights = np.ascontiguousarray(weights.transpose(3,2,0,1));
+            print(weights.shape);
+            next(model_parameters).data = torch.Tensor(weights);
+            param_index = param_index + 1;
 
     def forward(self,inputs,noise_info):
-        packed_input  = self.pack_mosaic(inputs);
+        inputs = self.pack_layer(inputs);
        # print('dalong log : check inputs shape = {}'.format(packed_input.size()));
-        down_layer1 = self.down_layer1(packed_input);
+        down_layer1 = self.down_layer1(inputs);
 #        print('dalong log : check down_layer1 size = {}'.format(down_layer1.size()))
         down_pool1 = F.max_pool2d(down_layer1,kernel_size = 2,stride = 2);
  #       print('dalong log : check down_pool1 size = {}'.format(down_pool1.size()))
@@ -278,6 +293,7 @@ class SIDNet(nn.Module):
        # print('dalong log : check down_pool4 size = {}'.format(down_pool4.size()))
 
         down_layer5 = self.down_layer5(down_pool4);
+
        # print('dalong log : check down_layer5 size = {}'.format(down_layer5.size()))
         up1 = self.up1(down_layer5,down_layer4);
        # print('dalong log : check up1 size = {}'.format(up1.size()))
