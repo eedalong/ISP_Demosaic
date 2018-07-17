@@ -1,14 +1,12 @@
 import torch
 import time
 import dalong_models
-import torch.nn as nn
 import numpy as np
+import config as cfg
+from torch.autograd import Variable
 import os
 import shutil
-import datasets_dng2jpg
-import datasets_dng2dng
-from torch.autograd import Variable
-import argparse
+import datasets
 from PIL import Image
 import utils
 import dalong_loss
@@ -29,12 +27,12 @@ def InverseGamma(image):
     return a;
 
 def Gamma(image):
-	a = image.copy();
-	a [image <= 0.0031308] = a[image <= 0.0031308]*12.92;
-	a[image>0.0031308] = (1+0.055)* (a[image>0.0031308]**(1.0/2.4)) - 0.055;
-	a[a<0] = 0;
-	a[a>1] = 1;
-	return a;
+    a = image.copy();
+    a [image <= 0.0031308] = a[image <= 0.0031308]*12.92;
+    a[image>0.0031308] = (1+0.055)* (a[image>0.0031308]**(1.0/2.4)) - 0.055;
+    a[a<0] = 0;
+    a[a>1] = 1;
+    return a;
 
 def PSNR(img1,img2,crop,peak_value = 255):
     mse = 0;
@@ -103,21 +101,18 @@ def release_memory(model,args):
         pass
 def main(args):
 
-    datasets = {'dng2dng':datasets_dng2dng.dataSet(args),
-                'dng2jpg':datasets_dng2jpg.dataSet(args)
-                }
     models = {'DemosaicNet':dalong_models.DemosaicNet(args.depth,args.width,args.kernel_size,pad = args.pad,batchnorm = args.batchnorm,bayer_type = args.bayer_type),
               'DeepISP':dalong_models.DeepISP(args),
               'SIDNet':dalong_models.SIDNet(args),
               'BayerNet':dalong_models.BayerNetwork(args)
               }
-    test_dataset =  datasets.get(args.dataset,'dalong');
+    test_dataset =  datasets.dataSet(args);
     model = models.get(args.model,'dalong');
     release_memory(models,args);
-    if model == 'dalong' or test_dataset == 'dalong':
-        print('Not A model or Loss or Not A Datasets {} {} {}'.format(args.model,args.dataset));
+    if model == 'dalong':
+        print('Not A model {}'.format(args.model));
         exit();
-    collate_fn = datasets_dng2dng.collate_fn;
+    collate_fn = datasets.collate_fn;
     test_loader = torch.utils.data.DataLoader(test_dataset,args.batchsize,shuffle = False,num_workers = int(args.workers),collate_fn = collate_fn);
 
     print('dalong log : begin to load data');
@@ -135,42 +130,8 @@ def main(args):
     print('dalong log : test finished ');
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser();
-    '''
-    These are all parameters for training
-    '''
-    parser.add_argument('--batchsize',type = int,default = 1,help = 'batchsize for training ');
-    # model arch is defined here
-    parser.add_argument('--depth',type = int,default = 15,help ='number of conv blocks');
-    parser.add_argument('--kernel_size',type  = int,default = 3,help = 'size of kernel in the model');
-    parser.add_argument('--batchnorm',type = bool,default = False,help = 'whether to use batchnorm in the model ');
-    parser.add_argument('--pad',type = int,default = 0,help = 'padding size in the arch');
-    parser.add_argument('--width',type = int,default = 64,help = 'channels for each conv layers ');
-    parser.add_argument('--workers',type = int,default = 8,help = 'number of workers for reading the data ');
-    parser.add_argument('--checkpoint_folder',type = str,default = '../models/');
-    parser.add_argument('--size',type = int,default = 128,help = 'size for training image setting ');
-    parser.add_argument('--data_dir',type = str,default = '',help = 'dataset directory for training ');
-    parser.add_argument('--flist',type = str,default = '',help = 'dataset list file for training ');
-    parser.add_argument('--Center',type = bool,default = False,help = 'whether to crop from center of the image ');
-    parser.add_argument('--Random',type = int,default = 0,help ='whether to crop randomly from the image ');
-    parser.add_argument('--gpu_use','--list', nargs='+', help='<Required> Set GPUS to USE', required=False);
-    parser.add_argument('--model_name',type = str,default = 'DemoisaicNet',help = 'set the model name prefix');
-    parser.add_argument('--bayer_type',type = str,default = 'GRBG',help = 'set the bayer type for all training data ');
-    parser.add_argument('--Evaluate',type = bool,default =False,help = 'Whether to evaluate the dataset');
-    # if there is a sigma_info file for using ,it is like sigma_shot ,sigma_read
-    # if not ,we use our own NoiseEstimation module for noise estimation
-    parser.add_argument('--sigma_info',type = bool,default = False,help = 'if this dataset has sigma_info file to use ');
-    parser.add_argument('--white_point',type = float,default = 255,help  = 'white point for raw data ');
-    parser.add_argument('--black_point',type = float,default = 0,help = 'black point for raw data ');
-    parser.add_argument('--init_model',type = str,default = '',help = 'model name for testing ');
-    parser.add_argument('--pretrained',type = int,default = 0,help = 'whether to use pretrianed model to init the model ');
-    parser.add_argument('--predemosaic',type = int,default=0,help = 'whether to predemosaic with bilinear method')
-    parser.add_argument('--model',type = str,default = '',help='choose a model to test')
-    parser.add_argument('--dataset',type=str,default ='',help = 'chosse a dataset to use ');
-    parser.add_argument('--SID',type = int,default = 0,help = 'whether to use SID datasets and ratios information');
-    parser.add_argument('--FastSID',type = int,default = 0,help = 'whether to use the datasets after minimal preprocess');
-    parser.add_argument('--GET_BATCH',type= int,default = 1,help = 'Load GET_BATCH data');
 
+    parser = cfg.parser;
     args = parser.parse_args();
     args.gpu_use = [int(item) for item in list(args.gpu_use[0].split(','))];
     print('all the params set  = {}'.format(args));
