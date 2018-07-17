@@ -5,12 +5,6 @@ import torch
 import time
 import data_reader
 
-'''
-This is an implementation for dataset.py for Joint Demosaic & Denoising
-
-Datasets are from MSR Dataset and S7-Samsung-image
-
-'''
 
 def pack_raw(raw,args):
     im = raw.raw_image_visible.astype(np.float32);
@@ -35,15 +29,12 @@ def unpack_raw(raw):
 
 
 def collate_fn(batch):
-    raw = batch[0][0];
-    data = batch[0][1]
+    inputs = batch[0][0];
+    gt = batch[0][1]
     for index in range(1,len(batch)):
-        raw = torch.cat((raw,batch[index][0]),0);
-        data = torch.cat((data,batch[index][1]),0);
-    return raw,data;
-
-
-
+        inputs = torch.cat((raw,batch[index][0]),0);
+        gt = torch.cat((data,batch[index][1]),0);
+    return inputs,gt;
 
 
 class dataSet(data.Dataset):
