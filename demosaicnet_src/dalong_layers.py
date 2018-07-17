@@ -177,7 +177,6 @@ class Upsample_Concat(nn.Module):
         super(Upsample_Concat,self).__init__();
         self.deconv = nn.ConvTranspose2d(in_channels,out_channels,kernel_size =2,stride = 2,bias = False);
     def forward(self,inputs1,inputs2):
-
         outputs1 = self.deconv(inputs1,output_size = inputs2.size());
         return torch.cat([outputs1,inputs2],1);
 class isp_block(nn.Module):
@@ -204,4 +203,32 @@ class isp_block(nn.Module):
         else:
             residual = right_ans;
         return left_ans,right_ans;
+
+class ResnetModule(nn.Module):
+    def __init__(self,input_channel,output_channel,Identity_Kernel = 0):
+        super(ResnetModule,self).__init__();
+        self.block1 = nn.Sequential(
+            nn.Conv2d(input_channel,output_channel,kernel_size =3,stride = 1,padding = 1),
+            nn.LeakyReLU(negative_value = 0.2)
+        );
+        if not Identity_Kernel :
+            self.block2 = nn.Sequential(
+                nn.Conv2d(output_channel ,output_channel,kernel_size = 3, stride = 1,padding =1),
+                nn.LeakyReLU(negative_value = 0.2),
+                );
+        else:
+            self.block2 = nn.Sequential(
+                nn.Conv2d(output_channel,output_channel,kernel_size =1,padding = 0),
+                nn.LeakyReLU(negative_value = 0.2),
+            );
+
+    def forward(self,inputs):
+        out1 = self.block1(inputs);
+        out2 = self.block2(out1);
+        return out1+out2;
+
+
+
+
+
 

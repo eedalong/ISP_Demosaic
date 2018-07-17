@@ -272,55 +272,108 @@ class SIDNet(nn.Module):
 
     def forward(self,inputs,noise_info):
         inputs = self.pack_layer(inputs);
-       # print('dalong log : check inputs shape = {}'.format(packed_input.size()));
         down_layer1 = self.down_layer1(inputs);
-#        print('dalong log : check down_layer1 size = {}'.format(down_layer1.size()))
         down_pool1 = F.max_pool2d(down_layer1,kernel_size = 2,stride = 2);
- #       print('dalong log : check down_pool1 size = {}'.format(down_pool1.size()))
         down_layer2 = self.down_layer2(down_pool1);
-  #      print('dalong log : check down_layer2 size = {}'.format(down_layer2.size()))
         down_pool2 = F.max_pool2d(down_layer2,kernel_size = 2,stride = 2);
-   #     print('dalong log : check down_pool2 size = {}'.format(down_pool2.size()))
-
         down_layer3 = self.down_layer3(down_pool2);
-    #    print('dalong log : check down_layer3 size = {}'.format(down_layer3.size()))
         down_pool3 = F.max_pool2d(down_layer3,kernel_size = 2,stride = 2);
-
-     #   print('dalong log : check down_pool3 size = {}'.format(down_pool3.size()))
         down_layer4 = self.down_layer4(down_pool3);
-      #  print('dalong log : check down_layer4 size = {}'.format(down_layer4.size()))
         down_pool4 = F.max_pool2d(down_layer4,kernel_size = 2,stride = 2);
-       # print('dalong log : check down_pool4 size = {}'.format(down_pool4.size()))
-
         down_layer5 = self.down_layer5(down_pool4);
-
-       # print('dalong log : check down_layer5 size = {}'.format(down_layer5.size()))
         up1 = self.up1(down_layer5,down_layer4);
-       # print('dalong log : check up1 size = {}'.format(up1.size()))
         up_layer1 = self.up_layer1(up1);
-       # print('dalong log : check up_layer1 size = {}'.format(up_layer1.size()))
-
         up2  = self.up2(up_layer1,down_layer3);
-       # print('dalong log : check up2 size = {}'.format(up2.size()))
         up_layer2 = self.up_layer2(up2);
-       # print('dalong log : check up_layer2 size = {}'.format(up_layer2.size()))
-
         up3 = self.up3(up_layer2,down_layer2);
-        #print('dalong log : check up3 size = {}'.format(up3.size()))
         up_layer3 = self.up_layer3(up3);
-        #print('dalong log : check up_layer3 size = {}'.format(up_layer3.size()))
-
         up4 = self.up4(up_layer3,down_layer1);
-        #print('dalong log : check up4 size = {}'.format(up4.size()))
         up_layer4 = self.up_layer4(up4);
-
-        #print('dalong log : check up_layer4 size = {}'.format(up_layer4.size()))
         up_layer5 = self.up_layer5(up_layer4);
-       # print('dalong log : check up_layer5 size = {}'.format(up_layer5.size()))
         output = self.output_layer(up_layer5);
-        #print('dalong log : check output size = {}'.format(output.size()))
         return output;
 
+class UNet(nn.Module):
+    '''
+    this model trys replace some 3x3 with 1x1 kernel
+    '''
+    pass
+
+class UNet2(nn.Module):
+    '''
+    this model integrate resnet module into UNet arch
+    '''
+    def __init__(self,args,Identical_Kernel = 0):
+
+        self.pack_layer = layers.PackBayerMosaicLayer();
+        self.down_layer1 = layers.ResnetModule(4,32,Identical_Kernel);
+        self.down_layer2 = layers.ResnetModule(32,64,Identical_Kernel);
+        self.down_layer3 = layers.ResnetModule(64,128,Identical_Kernel);
+        self.downlayer4 = layers.ResnetModule(128,256,Identical_Kernel);
+        self.down_layer5 = layers.ResnetModule(256,512,Identical_Kernel);
+        self.up1 = layers.Upsample_Concat(512,256);
+        self.up_layer1 = layers.ResnetModule(512,256,Identical_Kernel);
+        self.up2 = layers.Upsample_Concat(256,128);
+        self.up_layer2 = layers.ResnetModule(256,128,Identical_Kernel);
+        self.up3 = layers.Upsample_Concat(128,64);
+        self.up_layer3 = layers.ResnetModule(128,64,Identical_Kernel);
+        self.up4 = layers.Upsample_Concat(64,32);
+        self.up_layer4 = layers.ResnetModule(64,32,Identical_Kernel);
+        self.up_layer5 = layers.ResnetModule(32,12,Identical_Kernel);
+        self.output_layer = nn.ConvTranspose2d(12,3,2,stride = 2, groups = 3);
+        self.init_params();
+
+    def init_params(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m,nn.ConvTranspose2d):
+                init.kaiming_normal_(m.weight, mode='fan_out');
+                if m.bias is not None:
+                    init.constant_(m.bias, 0);
+            elif isinstance(m, nn.BatchNorm2d):
+                init.constant_(m.weight, 1);
+                init.constant_(m.bias, 0);
+            elif isinstance(m, nn.Linear):
+                init.normal(m.weight, std=0.001);
+                if m.bias is not None:
+                    init.constant_(m.bias, 0)
+
+    def forward(self,inputs,noise_info):
+
+        inputs = self.pack_layer(inputs);
+        down_layer1 = self.down_layer1(inputs);
+        down_pool1 = F.max_pool2d(down_layer1,kernel_size = 2,stride = 2);
+        down_layer2 = self.down_layer2(down_pool1);
+        down_pool2 = F.max_pool2d(down_layer2,kernel_size = 2,stride = 2);
+        down_layer3 = self.down_layer3(down_pool2);
+        down_pool3 = F.max_pool2d(down_layer3,kernel_size = 2,stride = 2);
+        down_layer4 = self.down_layer4(down_pool3);
+        down_pool4 = F.max_pool2d(down_layer4,kernel_size = 2,stride = 2);
+        down_layer5 = self.down_layer5(down_pool4);
+        up1 = self.up1(down_layer5,down_layer4);
+        up_layer1 = self.up_layer1(up1);
+        up2  = self.up2(up_layer1,down_layer3);
+        up_layer2 = self.up_layer2(up2);
+        up3 = self.up3(up_layer2,down_layer2);
+        up_layer3 = self.up_layer3(up3);
+        up4 = self.up4(up_layer3,down_layer1);
+        up_layer4 = self.up_layer4(up4);
+        up_layer5 = self.up_layer5(up_layer4);
+        output = self.output_layer(up_layer5);
+        return output;
+
+
+
+
+
+
+
+
+
+
+
+
+
+    pass
 
 class DeepISP(nn.Module):
     def __init__(self,args):
