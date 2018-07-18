@@ -427,6 +427,51 @@ class DeepISP(nn.Module):
         else:
             left,right = self.block20(left,right);
         return right;
+class Discriminator(nn.Module):
+    def __init__(self):
+        super(Discriminator,self).__init__();
+        self.block1 = nn.Sequential(
+            nn.Conv2d(3,64,3,ksize = 3 , padding = 1,stride =1),
+            nn.LeakyReLU(negative_value = 0.2),
+        );
+        self.block2 = layers.DiscriminatorModule(64,64);
+        self.block3 = layers.DiscriminatorModule(64,128);
+        self.block4 = layers.DiscriminatorModule(128,128);
+        self.block5 = layers.DiscriminatorModule(128,256);
+        self.block6 = layers.DiscriminatorModule(256,256);
+        self.block7 = layers.DiscriminatorModule(256,512);
+        self.block8 = layers.DiscriminatorModule(512,512);
+        self.block9 = nn.Conv2d(512,1,1,stride =1, padding = 0);
+        self.AdaptivePool = nn.AdaptiveAvgPool2d(1);
+        self.init_params();
+
+    def init_params(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m,nn.ConvTranspose2d):
+                init.kaiming_normal_(m.weight, mode='fan_out');
+                if m.bias is not None:
+                    init.constant_(m.bias, 0);
+            elif isinstance(m, nn.BatchNorm2d):
+                init.constant_(m.weight, 1);
+                init.constant_(m.bias, 0);
+            elif isinstance(m, nn.Linear):
+                init.normal(m.weight, std=0.001);
+                if m.bias is not None:
+                    init.constant_(m.bias, 0);
+    def forward(self,inputs):
+        inputs = self.block1(inputs);
+        inputs = self.block2(inputs);
+        inputs = self.block3(inputs);
+        inputs = self.block4(inputs);
+        inputs = self.block5(inputs);
+        inputs = self.block6(inputs);
+        inputs = self.block7(inputs);
+        inputs = self.block8(inputs);
+        inputs = self.block9(inputs);
+        return F.sigmoid(self.AdaptiveAvgPool2d(inputs));
+
+
+
 def Draw_Graph():
     from torchviz import dot
     import pydot

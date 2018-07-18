@@ -227,8 +227,17 @@ class ResnetModule(nn.Module):
         out2 = self.block2(out1);
         return out1+out2;
 
+class DiscriminatorModule(nn.Module):
+    def __init__(self,input_channel,output_channel,ksize = 3,padding = 1,stride = 1):
+        self.block = nn.Sequential(
+            nn.Conv2d(input_channel,output_channel,ksize = ksize,padding = padding = 1,stride = 1 ),
+            nn.BatchNorm2d(output_channel),
+            nn.LeakyReLU(negative_value = 0.2),
+        );
 
+    def forward(self,inputs):
 
+        return self.block(inputs);
 
 
 
