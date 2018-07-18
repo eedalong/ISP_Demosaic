@@ -178,6 +178,13 @@ class VGGLoss(nn.Module):
         f = x
       feats.append(f)
     return feats
+class BCELoss(nn.Module):
+    def __init__(self):
+        super(BCELoss,self).__init__();
+        self.bceloss = nn.BCELoss();
+    def forward(self,inputs,target):
+        return self.bceloss(inputs,target);
+
 class FeatureExtractor_VGG(nn.Module):
     def __init__(self):
         super(FeatureExtractor_VGG,self).__init__();
@@ -225,7 +232,7 @@ class FeatureExtractor_VGG(nn.Module):
         '''
         self.init();
     def init(self):
-        vgg_pretrained = models.vgg16(pretrained = True);
+        vgg_pretrained = tmodels.vgg16(pretrained = True);
         vgg_params = vgg_pretrained.parameters();
         param_index = 0;
         for param in self.parameters():

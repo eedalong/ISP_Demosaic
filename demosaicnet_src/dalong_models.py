@@ -293,13 +293,8 @@ class SIDNet(nn.Module):
         output = self.output_layer(up_layer5);
         return output;
 
-class UNet(nn.Module):
-    '''
-    this model trys replace some 3x3 with 1x1 kernel
-    '''
-    pass
 
-class UNet2(nn.Module):
+class UNet(nn.Module):
     '''
     this model integrate resnet module into UNet arch
     '''
@@ -362,18 +357,6 @@ class UNet2(nn.Module):
         return output;
 
 
-
-
-
-
-
-
-
-
-
-
-
-    pass
 
 class DeepISP(nn.Module):
     def __init__(self,args):

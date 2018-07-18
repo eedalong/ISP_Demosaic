@@ -24,19 +24,19 @@ class data_reader :
         img = np.asarray(img);
         if img.shape[2] == 4:
             img = img[:,:,:3];
-        return np.float16(img) / np.float32(1<<bitdepth - 1);
+        return np.float32(img) / np.float32(1<<bitdepth - 1);
     # if the data type is numpy we assume that the data has been preprocessed to be ready for input
     # i.e. the input data has been preprocessed
     def numpy_loader(self,path):
         img = np.load(path);
         if img.shape == 2 :
             img = np.dstack((img,img,img));
-        return np.float16(img) ;
+        return np.float32(img) ;
 
     def dng_loader(self,path):
         img = rawpy.imread(path);
         img = img.postprocess(use_camera_wb = True,half_size = False,no_auto_bright = True,output_bps = self.bitdepth);
-        img = np.float16(img / np..float32(1<<self.bitdepth - 1 ));
+        img = np.float32(img / np..float32(1<<self.bitdepth - 1 ));
         return img
     def input_loader(self,path):
         if self.input_type == 'IMG':

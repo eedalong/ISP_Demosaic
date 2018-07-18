@@ -10,35 +10,64 @@ import datasets
 import dalong_loss
 import config as cfg
 losses = utils.AverageMeter();
-recorder = utils.Recorder(save_dir ='./records/');
+
 def train(train_loader,model,criterion,optimizer,epoch,args):
     model.train(True);
     start = time.time();
-    for i , (raw,data) in enumerate(train_loader):
-
-        raw_var = Variable(raw).cuda();
-        data_var = Variable(data).cuda();
-
-        out = model(raw_var,0);
-
-
-        loss = criterion(out,data_var);
-
-
-        losses.update(loss.data[0],raw.size(0));
-        # add to writer
-
+    for i , (inputs,gt) in enumerate(train_loader):
+        inputs = Variable(inputs).cuda();
+        gt = Variable(gt).cuda();
+        out = model(inputs,0);
+        loss = criterion(out,gt);
+        losses.update(loss.data[0],inputs.size(0));
         optimizer.zero_grad();
         loss.backward();
         optimizer.step();
-
         end = time.time();
         if i % args.print_freq ==0:
-
             log_str = 'Epoch:[{0}] [{1} / {2}] \t  Time_Consumed  = {3} , Loss = {4}'.format(epoch,i,len(train_loader),end - start,losses.value);
             start = time.time();
             print(log_str);
-    recorder.add_record('loss',losses.value,epoch);
+
+Generator_content_loss = utils.AverageMeter();
+Generator_adversarial_loss = utils.AverageMeter();
+Generator_total_loss = utils.AverageMeter();
+Discriminator_loss = utils.AverageMeter();
+
+def trainGAN(train_loader,generator,discriminator,content_criterion,adversarial_criterion,optim_generator,optim_discriminator,epoch,args):
+
+    ones_const = Variable(torch.ones(args.GET_BATCH* args.TRAIN_BATCH,1)).cuda();
+    generator.train(True);
+    discriminator.train(True);
+    start = time.time();
+    for i, (inputs,gt) in enumerate(train_loader):
+        inputs = Variable(inputs).cuda();
+        real = Variable(gt).cuda();
+        target_real = Variable(torch.rand(args.TRAIN_BATCH * args.GET_BATCHi,1)*0.5 + 0.7).cuda();
+        target_fake = Variable(torch.rand(args.TRAIN_BATCH * args.GET_BATCH,1)*0.3);
+        fake = generator(inputs,0);
+        # Train discriminator
+        discriminator.zero_grad();
+        discriminator_loss = adversarial_criterion(discriminator(real),target_real) + \
+            adversarial_criterion(discriminator(fake),target_fake);
+        Discriminator_loss.update(Discriminator_loss.data[0],real.size(0));
+        discriminator_loss.backward();
+        optim_discriminator.step();
+        # Train generator
+        generator.zero_grad();
+        generator_content_loss = content_criterion(real,fake);
+        Generator_content_loss.update(Generator_content_loss.data[0],real.size(0));
+        generator_adversarial_loss = adversarial_criterion(discriminator(fake),ones_const);
+        Generator_adversarial_loss.update(generator_adversarial_loss.data[0],real.size(0));
+        generator_total_loss = generator_content_loss + 1e-3 * Generator_adversarial_loss;
+        Generator_total_loss.update(generator_total_loss.data[0],real.size(0));
+        Generator_total_loss.backward();
+        optim_generator.step();
+        end = time.time();
+        if i % args.print_freq == 0:
+            log_str = 'Epoch:[{0}]  [{1} / {2}] \t Time consumimg  = {3} generator_total_loss = {4} discriminator_loss = {5}'.format(epoch,i,len(train_loader),end - start , Generator_total_loss.value,Discriminator_loss.value);
+            print(log_str);
+
 def release_memory(models,args):
     # TODO
     pass;
@@ -48,34 +77,38 @@ def main(args):
     models = {'DemosaicNet':dalong_models.DemosaicNet(args.depth,args.width,args.kernel_size,pad = args.pad,batchnorm = args.batchnorm,bayer_type = args.bayer_type),
               'DeepISP':dalong_models.DeepISP(args),
               'SIDNet':dalong_models.SIDNet(args),
-              'BayerNet':dalong_models.BayerNetwork(args)
-              }
+              'BayerNet':dalong_models.BayerNetwork(args),
+              'UNet':dalong_models.Unet(args),
+              };
+
     Losses ={'L1Loss':dalong_loss.L1Loss(),
              'L2Loss':dalong_loss.L2Loss(),
              'SSIM':dalong_loss.SSIM(),
              'MSSIM':dalong_loss.MSSSIM(),
-             'pixel_perceptural':dalong_loss.pixel_perceptural_loss()
-             }
+             'pixel_perceptural':dalong_loss.pixel_perceptural_loss(),
+             'VGGLoss':dalong_loss.VGGLoss(),
+             'BCELoss':dalong_loss.BCELoss(),
+             };
+
     train_dataset = datasets.dataSet(args);
     collate_fn = datasets.collate_fn;
     model = models.get(args.model,'dalong');
-    criterion  = Losses.get(args.loss,'dalong')
-    release_memory(models,args);
-    if model == 'dalong' or criterion == 'dalong' :
-        print('Not A model or Loss or Not A Datasets {}  {}'.format(args.model,args.loss));
-        exit();
     train_loader = torch.utils.data.DataLoader(train_dataset,args.batchsize,shuffle = True,collate_fn = collate_fn,num_workers = int(args.workers));
-    print('dalong log : Loss build finished ');
+    criterion  = Losses.get(args.loss,'dalong')
     model = torch.nn.DataParallel(model);
     model = model.cuda();
+    release_memory(models,Losses,args);
     optimizer = torch.optim.Adam(model.parameters(),lr = args.lr,betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-08);
+    if args.TRAIN_GAN :
+        discriminator = dalong_models.Discriminator();
+        adversarial_criterion = dalong_loss.BCELoss();
+        optim_discriminator = optim.Adam(discriminator.parmeters(),lr = 1e-4,betas = (0.9,0.999),eps = 1e-08,weight_decay =1e-08);
 
     for epoch in range(args.max_epoch):
-        train(train_loader,model,criterion,optimizer,epoch,args);
-        if epoch > 0.5*args.max_epoch and args.lr_change:
-            optimizer = torch.optim.Adam(model.parameters(),lr = 1e-5,betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-08);
-            args.lr_change = 0;
-
+        if args.TRAIN_GAN :
+            train(train_loader,generator,discriminator,criterion,adversarial_criterion,optimizer,optim_discriminator,epoch,args);
+        else:
+            train(train_loader,model,criterion,optimizer,epoch,args);
         if (epoch +1) % args.save_freq == 0:
             path_checkpoint = '{0}/{1}_state_epoch{2}.pth'.format(args.checkpoint_folder,args.model_name,epoch+1);
             utils.save_checkpoint(model,path_checkpoint);
