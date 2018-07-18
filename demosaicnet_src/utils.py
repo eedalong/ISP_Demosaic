@@ -38,32 +38,6 @@ def save_logs(root_path,args):
     for key in log :
         log_file.write(key + ' : ' + str(log[key]) + '\n');
     log_file.close();
-def RandomCrop(size,raw,data):
-    h,w = raw.shape[0],raw.shape[1];
-    th,tw = size;
-    x1 = random.randint(0,w -tw);
-    y1 = random.randint(0,h - th);
-    return raw[y1:y1+th,x1:x1+tw,:],data[y1*2:y1*2+th*2,x1*2:x1*2+tw*2,:];
-def RandomFLipH(raw,data):
-	if random.random()< 0.5:
-		return np.flip(raw,axis = 1).copy(),np.flip(data,axis = 1).copy();
-	return raw,data;
-def RandomFlipV(raw,data):
- 	if random.random()< 0.5:
-		return np.flip(raw,axis = 0).copy(),np.flip(data,axis = 0).copy();
-	return raw,data;
-def RandomTranspose(raw,data):
-    if random.random()< 0.5:
-        return np.transpose(raw,(1,0,2)).copy(),np.transpose(data,(1,0,2)).copy();
-    return raw,data;
-
-def collate_fn(batch):
-    raw = batch[0][0];
-    data = batch[0][1]
-    for index in range(1,len(batch)):
-        raw = torch.cat((raw,batch[index][0]),0);
-        data = torch.cat((data,batch[index][1]),0);
-    return raw,data;
 
 
 def main():

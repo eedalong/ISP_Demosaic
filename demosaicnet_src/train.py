@@ -68,9 +68,14 @@ def trainGAN(train_loader,generator,discriminator,content_criterion,adversarial_
             log_str = 'Epoch:[{0}]  [{1} / {2}] \t Time consumimg  = {3} generator_total_loss = {4} discriminator_loss = {5}'.format(epoch,i,len(train_loader),end - start , Generator_total_loss.value,Discriminator_loss.value);
             print(log_str);
 
-def release_memory(models,args):
-    # TODO
-    pass;
+def release_memory(models,losses,args):
+    for key in models.keys():
+        if key != args.model:
+            del models[key];
+    for key in losses.keys():
+        if key != args.loss:
+            del losses[key]
+    return ;
 
 def main(args):
 
@@ -89,7 +94,7 @@ def main(args):
              'VGGLoss':dalong_loss.VGGLoss(),
              'BCELoss':dalong_loss.BCELoss(),
              };
-
+    release_memory(models,Losses,args);
     train_dataset = datasets.dataSet(args);
     collate_fn = datasets.collate_fn;
     model = models.get(args.model,'dalong');
@@ -97,7 +102,6 @@ def main(args):
     criterion  = Losses.get(args.loss,'dalong')
     model = torch.nn.DataParallel(model);
     model = model.cuda();
-    release_memory(models,Losses,args);
     optimizer = torch.optim.Adam(model.parameters(),lr = args.lr,betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-08);
     if args.TRAIN_GAN :
         discriminator = dalong_models.Discriminator();
@@ -125,7 +129,6 @@ if __name__ == '__main__':
         os.makedirs(args.checkpoint_folder);
         print('dalong log : all the models will be saved under {} \n'.format(args.checkpoint_folder));
     utils.save_logs(args.checkpoint_folder,args);
-
     main(args);
 
 
