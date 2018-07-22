@@ -8,7 +8,7 @@
 *.swo
 *.json
 tmp
-*.sh
+.sh
 *.png
 :w!
 :w

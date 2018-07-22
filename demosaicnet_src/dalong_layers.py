@@ -209,17 +209,18 @@ class ResnetModule(nn.Module):
         super(ResnetModule,self).__init__();
         self.block1 = nn.Sequential(
             nn.Conv2d(input_channel,output_channel,kernel_size =3,stride = 1,padding = 1),
-            nn.LeakyReLU(negative_value = 0.2)
+            nn.LeakyReLU(negative_slope = 0.2)
         );
         if not Identity_Kernel :
             self.block2 = nn.Sequential(
                 nn.Conv2d(output_channel ,output_channel,kernel_size = 3, stride = 1,padding =1),
-                nn.LeakyReLU(negative_value = 0.2),
+                nn.BatchNorm2d(output_channel),
+                nn.LeakyReLU(negative_slope = 0.2),
                 );
         else:
             self.block2 = nn.Sequential(
                 nn.Conv2d(output_channel,output_channel,kernel_size =1,padding = 0),
-                nn.LeakyReLU(negative_value = 0.2),
+                nn.BatchNorm2d(output_channel),
             );
 
     def forward(self,inputs):
@@ -229,10 +230,11 @@ class ResnetModule(nn.Module):
 
 class DiscriminatorModule(nn.Module):
     def __init__(self,input_channel,output_channel,ksize = 3,padding = 1,stride = 1):
+        super(DiscriminatorModule,self).__init__();
         self.block = nn.Sequential(
-            nn.Conv2d(input_channel,output_channel,ksize = ksize,padding = padding = 1,stride = 1 ),
+            nn.Conv2d(input_channel,output_channel,kernel_size = ksize,padding = 1,stride = 1 ),
             nn.BatchNorm2d(output_channel),
-            nn.LeakyReLU(negative_value = 0.2),
+            nn.LeakyReLU(negative_slope = 0.2),
         );
 
     def forward(self,inputs):

@@ -56,12 +56,16 @@ def test(train_loader,model):
             for index in range(raw.shape[0]):
                 raw_pad[index,:,:,:] = np.pad(raw[index,:,:,:],[(0,0),(c[0],c[0]),(c[1],c[1])],'reflect');
             raw = torch.FloatTensor(raw_pad);
-        raw_var = Variable(raw).cuda();
+
+        raw_var = Variable(raw.contiguous());
+        if cfg.CUDA_USE :
+            raw_var = raw_var.cuda();
         forward_start = time.time();
         output = model(raw_var,0);
         forward_end = time.time();
         print('dalong log : check forward time  = {}s'.format(forward_end - forward_start));
         batchSize = raw_var.size(0);
+        print('dalong log : check batchSize = {}'.format(batchSize))
         output = output.data.cpu().numpy();
         if Flag:
             crop = (np.array(data.shape)[-2:] - np.array(output.shape[-2:])) / 2;
@@ -78,7 +82,7 @@ def test(train_loader,model):
         ssim_end = time.time();
         print('dalong log : check ssim compute time = {}s'.format(ssim_end - ssim_start));
         ssim_meter.update(ssim_value,1);
-        image_index = image_index + 1;
+
         for index in range(batchSize):
             psnr_start = time.time();
             data_image = (np.clip(output[index,:,:,:] / 0.00390625 + 0.5 ,0,255)).astype('uint8')
@@ -91,12 +95,11 @@ def test(train_loader,model):
             psnr_meter.update(psnr);
             tmp_end = time.time();
             print('dalong log : check for psnr {} consumes {}s'.format(image_index,tmp_end - psnr_start ));
-
-            #data_image = Image.fromarray(data_image.astype('uint8'));
-            #data_image.save('results/'+str(index)+'.jpg');
             print('dalong log the final psnr value is {}'.format(psnr_meter.value));
-
             print('dalong log the final ssim value is {}'.format(ssim_meter.value));
+            image_index = image_index + 1;
+
+
 def release_memory(model,args):
         pass
 def main(args):
@@ -104,7 +107,8 @@ def main(args):
     models = {'DemosaicNet':dalong_models.DemosaicNet(args.depth,args.width,args.kernel_size,pad = args.pad,batchnorm = args.batchnorm,bayer_type = args.bayer_type),
               'DeepISP':dalong_models.DeepISP(args),
               'SIDNet':dalong_models.SIDNet(args),
-              'BayerNet':dalong_models.BayerNetwork(args)
+              'BayerNet':dalong_models.BayerNetwork(args),
+              'UNet':dalong_models.UNet(args),
               }
     test_dataset =  datasets.dataSet(args);
     model = models.get(args.model,'dalong');
@@ -113,19 +117,20 @@ def main(args):
         print('Not A model {}'.format(args.model));
         exit();
     collate_fn = datasets.collate_fn;
-    test_loader = torch.utils.data.DataLoader(test_dataset,args.batchsize,shuffle = False,num_workers = int(args.workers),collate_fn = collate_fn);
+    test_loader = torch.utils.data.DataLoader(test_dataset,args.TRAIN_BATCH,shuffle = False,num_workers = int(args.workers),collate_fn = collate_fn);
 
     print('dalong log : begin to load data');
 
     init_model = os.path.join(args.checkpoint_folder,args.init_model);
-    model = torch.nn.DataParallel(model,device_ids = args.gpu_use);
+    if cfg.CUDA_USE :
+        model = torch.nn.DataParallel(model);
+        model = model.cuda();
 
     if args.init_model != '':
         print('dalong log : init model with {}'.format(args.init_model))
         model_dict = torch.load(init_model);
         model.load_state_dict(model_dict);
 
-    model = model.cuda();
     test(test_loader,model);
     print('dalong log : test finished ');
 
@@ -133,6 +138,6 @@ if __name__ == '__main__':
 
     parser = cfg.parser;
     args = parser.parse_args();
-    args.gpu_use = [int(item) for item in list(args.gpu_use[0].split(','))];
+    #args.gpu_use = [int(item) for item in list(args.gpu_use[0].split(','))];
     print('all the params set  = {}'.format(args));
     main(args)

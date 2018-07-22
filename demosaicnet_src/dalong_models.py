@@ -6,7 +6,7 @@ import numpy as np
 import dalong_layers as layers
 from torch.nn import init
 from collections import OrderedDict
-import config
+import config as cfg
 #import init_path
 #import caffe
 
@@ -16,7 +16,7 @@ class DemosaicNet(nn.Module):
         super(DemosaicNet,self).__init__();
         self.bayer_type = bayer_type
         # Pack the input to 4D inputs
-        self.packmosaic = layers.PackBayerMosaicLayer(bayer_type = self.bayer_type);
+        self.packmosaic = layers.PackBayerMosaicLayer();
         # conv_block
         self.preconv = layers.lowlevel_block(1,4,channel,ksize,pad,batchnorm);
         self.block1 = layers.lowlevel_block(depth - 2 ,channel,channel,ksize,pad,batchnorm);
@@ -142,19 +142,20 @@ class BayerNetwork(nn.Module):
                 if m.bias is not None:
                     init.constant(m.bias, 0)
     def init_with_pretrained(self):
-        #print('dalong log : init the model with pretrianed models');
-        param_name = open('../pretrained/bayer/params/param_name').readlines();
+        print('dalong log : init BayerNet with pretrianed models');
+        param_name = open('./pretrained/bayer/param_name').readlines();
         index  = 0;
         model_parameters = self.parameters();
         for param in param_name :
-            tmp_param = np.load('../pretrained/bayer/params/'+param[:-1]+'_conv.npy');
+            tmp_param = np.load('./pretrained/bayer/' + param[:-1]);
             next(model_parameters).data = torch.Tensor(tmp_param);
-            tmp_param = np.load('../pretrained/bayer/params/'+param[:-1]+'_bias.npy');
-            next(model_parameters).data = torch.Tensor(tmp_param);
+            #tmp_param = np.load('./pretrained/bayer/' + param[:-1]);
+            #next(model_parameters).data = torch.Tensor(tmp_param);
 
     def forward(self, samples,no_use):
         # 1/4 resolution features
         mosaic = self.mosaic_mask(samples);
+        noise  = Variable(torch.FloatTensor(np.zeros((samples.size(0),1,samples.size(2),samples.size(3)))));
         features = self.main_processor(mosaic)
         filters, masks = features[:, :self.width], features[:, self.width:]
         filtered = filters * masks
@@ -256,11 +257,12 @@ class SIDNet(nn.Module):
                 if m.bias is not None:
                     init.constant_(m.bias, 0)
     def init_with_pretrained(self):
+        return ;
         print('dalong log : init with the pretrained params');
-        param_name = open('../pretrained/SID/params/param_name');
+        param_name = open('./pretrained/SID/param_name');
         model_parameters = self.parameters();
         param_index = 0;
-        root_path = '../pretrained/SID/params/'
+        root_path = './pretrained/SID/'
         total = len(param_name.readlines());
         while param_index < total:
             weights  = np.load(root_path+str(param_index)+'.npy');
@@ -299,12 +301,12 @@ class UNet(nn.Module):
     this model integrate resnet module into UNet arch
     '''
     def __init__(self,args,Identical_Kernel = 0):
-
+        super(UNet,self).__init__();
         self.pack_layer = layers.PackBayerMosaicLayer();
         self.down_layer1 = layers.ResnetModule(4,32,Identical_Kernel);
         self.down_layer2 = layers.ResnetModule(32,64,Identical_Kernel);
         self.down_layer3 = layers.ResnetModule(64,128,Identical_Kernel);
-        self.downlayer4 = layers.ResnetModule(128,256,Identical_Kernel);
+        self.down_layer4 = layers.ResnetModule(128,256,Identical_Kernel);
         self.down_layer5 = layers.ResnetModule(256,512,Identical_Kernel);
         self.up1 = layers.Upsample_Concat(512,256);
         self.up_layer1 = layers.ResnetModule(512,256,Identical_Kernel);
@@ -431,8 +433,8 @@ class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator,self).__init__();
         self.block1 = nn.Sequential(
-            nn.Conv2d(3,64,3,ksize = 3 , padding = 1,stride =1),
-            nn.LeakyReLU(negative_value = 0.2),
+            nn.Conv2d(3,64,kernel_size = 3 , padding = 1,stride =1),
+            nn.LeakyReLU(negative_slope = 0.2),
         );
         self.block2 = layers.DiscriminatorModule(64,64);
         self.block3 = layers.DiscriminatorModule(64,128);
@@ -468,7 +470,7 @@ class Discriminator(nn.Module):
         inputs = self.block7(inputs);
         inputs = self.block8(inputs);
         inputs = self.block9(inputs);
-        return F.sigmoid(self.AdaptiveAvgPool2d(inputs));
+        return F.sigmoid(self.AdaptivePool(inputs));
 
 
 

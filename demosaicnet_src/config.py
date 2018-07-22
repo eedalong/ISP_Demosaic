@@ -6,7 +6,6 @@ parser = argparse.ArgumentParser();
 These are all parameters for training and testing
 '''
 
-parser.add_argument('--batchsize',type = int,default = 1,help = 'batchsize for training ');
 parser.add_argument('--lr',type = float,default = 1e-4,help = 'learning rate for training ');
 parser.add_argument('--depth',type = int,default = 15,help = 'number of convolution layers');
 parser.add_argument('--kernel_size',type = int,default = 3,help = 'size of kernel for each convolution layer ');
@@ -30,6 +29,8 @@ parser.add_argument('--Evaluate',type = bool,default =False,help = 'Whether to e
 parser.add_argument('--white_point',type = float,default = 255,help  = 'white point for raw data ');
 parser.add_argument('--black_point',type = float,default = 0,help = 'black point for raw data ');
 parser.add_argument('--pretrained',type = int,default = 0,help = 'whether init the model with pretrained models');
+parser.add_argument('--predemosaic',type = int,default = 0);
+parser.add_argument('--init_model',type =str,default = '',help = 'choose init model');
 # if there is a sigma_info file for using ,it is like sigma_shot ,sigma_read
 # if not ,we use our own NoiseEstimation module for noise estimation
 parser.add_argument('--sigma_info',type = bool,default = False,help = 'if this dataset has sigma_info file to use ');
@@ -37,9 +38,10 @@ parser.add_argument('--model',type = str,default = 'DemosaicNet',help = 'choose 
 parser.add_argument('--loss',type = str,default = '',help = 'choose a loss ')
 parser.add_argument('--TRAIN_BATCH',type = int,default = 4,help = 'train BATCH inputs');
 parser.add_argument('--GET_BATCH',type = int,default = 64,help = 'Load GET_BATCH inputs')
-parser.add_argument('--TRAIN_GAN',type = bool,default = False,help = 'Whether to train ')
+parser.add_argument('--TRAIN_GAN',type = int,default = 0,help = 'Whether to train ')
 parser.add_argument('--lr_change',type = int,default = 1);
 parser.add_argument('--input_type',type =str,default = 'IMG',help = 'Choose input data type for data_reader');
 parser.add_argument('--gt_type',type = str,default  = 'IMG',help = 'Choose gt data type for data reader');
-parser.add_argument('--bitdepth',type = int,default = 16, help = 'bitdepth for input raw data');
+parser.add_argument('--input_normalize',type = int,default = 16, help = 'bitdepth for input data');
+parser.add_argument('--gt_normalize',type = int,default = 16,help = 'bitdepth for gt data');
 

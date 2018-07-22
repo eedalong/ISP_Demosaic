@@ -15,8 +15,11 @@ def train(train_loader,model,criterion,optimizer,epoch,args):
     model.train(True);
     start = time.time();
     for i , (inputs,gt) in enumerate(train_loader):
-        inputs = Variable(inputs).cuda();
-        gt = Variable(gt).cuda();
+        inputs = Variable(inputs);
+        gt = Variable(gt);
+        if cfg.CUDA_USE:
+            inputs = inputs.cuda();
+            gt = gt.cuda();
         out = model(inputs,0);
         loss = criterion(out,gt);
         losses.update(loss.data[0],inputs.size(0));
@@ -41,10 +44,16 @@ def trainGAN(train_loader,generator,discriminator,content_criterion,adversarial_
     discriminator.train(True);
     start = time.time();
     for i, (inputs,gt) in enumerate(train_loader):
-        inputs = Variable(inputs).cuda();
-        real = Variable(gt).cuda();
-        target_real = Variable(torch.rand(args.TRAIN_BATCH * args.GET_BATCHi,1)*0.5 + 0.7).cuda();
-        target_fake = Variable(torch.rand(args.TRAIN_BATCH * args.GET_BATCH,1)*0.3);
+        inputs = Variable(inputs);
+        real = Variable(gt);
+        target_real = Variable(torch.rand(args.TRAIN_BATCH * args.GET_BATCH)*0.5 + 0.7);
+        target_fake = Variable(torch.rand(args.TRAIN_BATCH * args.GET_BATCH)*0.3);
+        if cfg.CUDA_USE :
+            inputs = inputs.cuda();
+            real = real.cuda();
+            target_real = target_real.cuda();
+            target_fake = target_fake.cuda();
+
         fake = generator(inputs,0);
         # Train discriminator
         discriminator.zero_grad();
@@ -83,7 +92,7 @@ def main(args):
               'DeepISP':dalong_models.DeepISP(args),
               'SIDNet':dalong_models.SIDNet(args),
               'BayerNet':dalong_models.BayerNetwork(args),
-              'UNet':dalong_models.Unet(args),
+              'UNet':dalong_models.UNet(args),
               };
 
     Losses ={'L1Loss':dalong_loss.L1Loss(),
@@ -98,19 +107,25 @@ def main(args):
     train_dataset = datasets.dataSet(args);
     collate_fn = datasets.collate_fn;
     model = models.get(args.model,'dalong');
-    train_loader = torch.utils.data.DataLoader(train_dataset,args.batchsize,shuffle = True,collate_fn = collate_fn,num_workers = int(args.workers));
+    train_loader = torch.utils.data.DataLoader(train_dataset,args.TRAIN_BATCH,shuffle = True,collate_fn = datasets.collate_fn,num_workers = int(args.workers));
     criterion  = Losses.get(args.loss,'dalong')
-    model = torch.nn.DataParallel(model);
-    model = model.cuda();
     optimizer = torch.optim.Adam(model.parameters(),lr = args.lr,betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-08);
+    discriminator = None;
+    adversarial_criterion = None;
+    optim_discriminator = None;
     if args.TRAIN_GAN :
         discriminator = dalong_models.Discriminator();
+        discriminator = torch.nn.DataParallel(discriminator);
         adversarial_criterion = dalong_loss.BCELoss();
-        optim_discriminator = optim.Adam(discriminator.parmeters(),lr = 1e-4,betas = (0.9,0.999),eps = 1e-08,weight_decay =1e-08);
-
+        optim_discriminator = optim.Adam(discriminator.parameters(),lr = 1e-4,betas = (0.9,0.999),eps = 1e-08,weight_decay =1e-08);
+    if cfg.CUDA_USE :
+        model = torch.nn.DataParallel(model);
+        model = model.cuda();
+        if args.TRAIN_GAN :
+            discriminator = discriminator.cuda();
     for epoch in range(args.max_epoch):
         if args.TRAIN_GAN :
-            train(train_loader,generator,discriminator,criterion,adversarial_criterion,optimizer,optim_discriminator,epoch,args);
+            trainGAN(train_loader,model,discriminator,criterion,adversarial_criterion,optimizer,optim_discriminator,epoch,args);
         else:
             train(train_loader,model,criterion,optimizer,epoch,args);
         if (epoch +1) % args.save_freq == 0:
