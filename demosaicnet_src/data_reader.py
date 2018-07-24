@@ -4,6 +4,8 @@ import rawpy
 import time
 import os
 import random
+import skimage.transform as sktransform
+
 class data_reader :
     '''
     This class is intended to provide a unified data reader interface
@@ -26,6 +28,9 @@ class data_reader :
         if img.shape[2] == 4:
             img = img[:,:,:3];
         return np.float32(img) / normalize;
+    def do_white_balance(self,raw,white_balance):
+        raw[] = raw
+
     # if the data type is numpy we assume that the data has been preprocessed to be ready for input
     # i.e. the input data has been preprocessed
     def numpy_loader(self,path):
@@ -34,33 +39,45 @@ class data_reader :
             img = np.dstack((img,img,img));
         return np.float32(img) ;
 
-    def dng_loader(self,path,normalize):
+    def dngimg_loader(self,path,normalize):
         img = rawpy.imread(path);
         img = img.postprocess(use_camera_wb = True,half_size = False,no_auto_bright = True,output_bps = self.bitdepth);
         img = np.float32(img) / normalize;
+        return img
+    def dngraw_loader(self,path,normalize):
+        img = rawpy.imread(path);
+        img = img.raw_image_visible;
+        img = np.dstack((img,img,img));
+
+        img = self.pack_raw(img);
         return img
     def input_loader(self,path):
         if self.input_type == 'IMG':
             return self.image_loader(path,self.args.input_normalize);
         if self.input_type == 'NUMPY':
             return self.numpy_loader(path);
-        if self.input_type == 'DNG':
-            return self.dng_loader(self,path,self.input_normalize);
-
+        if self.input_type == 'DNG_IMG':
+            return self.dngimg_loader(self,path,self.input_normalize);
+        if self.input_type == 'DNG_RAW':
+            return self.dngraw_loader(self.path,self.input_normalize);
 
     def gt_loader(self,path):
         if self.gt_type == 'IMG':
             return self.image_loader(path,self.args.gt_normalize);
         if self.gt_type == 'NUMPY' :
             return self.numpy_loader(path);
-        if self.gt_type == 'DNG':
-            return self.dng_loader(path,self.args.gt_normalize);
+        if self.gt_type == 'DNG_IMG':
+            return self.dngimg_loader(path,self.args.gt_normalize);
+        if self.gt_type == 'DNG_RAW':
+            return self.dngraw_loader(path,self.args.gt_normalize);
 
     def RandomCrop(self,size,raw,data):
         h,w = raw.shape[0],raw.shape[1];
         th,tw = size;
         x1 = random.randint(0,w -tw);
         y1 = random.randint(0,h - th);
+        if self.args.gt_type == 'DNG_RAW':
+            return raw[y1:y1+th,x1:x1+tw,:],data[y1:y1+th,x1:x1+tw,:];
         # else we think it is raw --> JPEG
         return raw[y1:y1+th,x1:x1+tw,:],data[y1*2:y1*2+th*2,x1*2:x1*2+tw*2,:];
     def RandomFLipH(self,raw,data):
@@ -76,4 +93,53 @@ class data_reader :
             return np.transpose(raw,(1,0,2)).copy(),np.transpose(data,(1,0,2)).copy();
         return raw,data;
 
+    def AddGaussianNoise(self,raw,sigma = 1):
+
+        if self.AddGaussianNoise:
+            noise = np.random.normal(loc = 0,scale = sigma,size = raw.shape);
+            return raw + noise;
+        return raw ;
+
+    def Resize(self,raw,size):
+
+        if self.args.Resize :
+            output = sktransform.resize(raw,size);
+            return output;
+        else:
+            return raw ;
+
+    def pack_raw(self,im):
+        im = (im - self.args.black_point) / (self.args.white_point - self.args.black_point);
+        out = np.dstack((im[::2,::2,1],
+                        im[::2,1::2,0],
+                        im[1::2,::2,2],
+                        im[1::2,1::2,1]),
+                        );
+        return out ;
+
+    def unpack_raw(self,raw):
+        if len(raw.shape) == 3:
+            raw = np.expand_dims(raw,axis = 0);
+        output =  np.zeros((raw.shape[0],3,2*raw.shape[2],2*raw.shape[3]));
+        output[:,1,::2,::2] = raw[:,0,:,:];
+        output[:,0,::2,1::2] = raw[:,1,:,:];
+        output[:,2,1::2,::2] = raw[:,2,:,:];
+        output[:,1,1::2,1::2] = raw[:,3,:,:];
+        return output ;
+
+    def unpack_raw_single(self,raw):
+        if self.args.gt_type != 'DNG_RAW':
+            return raw
+        if len(raw.shape) == 3 :
+            raw = np.expand_dims(raw,axis = 0);
+        output =  np.zeros((raw.shape[0],1,2*raw.shape[2],2*raw.shape[3]));
+        output[:,0,::2,::2] = raw[:,0,:,:];
+        output[:,0,::2,1::2] = raw[:,1,:,:];
+        output[:,0,1::2,::2] = raw[:,2,:,:];
+        output[:,0,1::2,1::2] = raw[:,3,:,:];
+        return output ;
+
+
+    def AddPossionNoise(self,raw,sigma = 1):
+        pass
 

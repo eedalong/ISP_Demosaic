@@ -302,6 +302,7 @@ class UNet(nn.Module):
     '''
     def __init__(self,args,Identical_Kernel = 0):
         super(UNet,self).__init__();
+        self.args = args ;
         self.pack_layer = layers.PackBayerMosaicLayer();
         self.down_layer1 = layers.ResnetModule(4,32,Identical_Kernel);
         self.down_layer2 = layers.ResnetModule(32,64,Identical_Kernel);
@@ -357,6 +358,72 @@ class UNet(nn.Module):
         up_layer5 = self.up_layer5(up_layer4);
         output = self.output_layer(up_layer5);
         return output;
+
+class DeNet(nn.Module):
+    '''
+    this model integrate resnet module into UNet arch
+    '''
+    def __init__(self,args,Identical_Kernel = 0):
+        super(DeNet,self).__init__();
+        self.args = args ;
+        self.pack_layer = layers.PackBayerMosaicLayer();
+        self.down_layer1 = layers.ResnetModule(4,32,Identical_Kernel);
+        self.down_layer2 = layers.ResnetModule(32,64,Identical_Kernel);
+        self.down_layer3 = layers.ResnetModule(64,128,Identical_Kernel);
+        self.down_layer4 = layers.ResnetModule(128,256,Identical_Kernel);
+        self.down_layer5 = layers.ResnetModule(256,512,Identical_Kernel);
+        self.up1 = layers.Upsample_Concat(512,256);
+        self.up_layer1 = layers.ResnetModule(512,256,Identical_Kernel);
+        self.up2 = layers.Upsample_Concat(256,128);
+        self.up_layer2 = layers.ResnetModule(256,128,Identical_Kernel);
+        self.up3 = layers.Upsample_Concat(128,64);
+        self.up_layer3 = layers.ResnetModule(128,64,Identical_Kernel);
+        self.up4 = layers.Upsample_Concat(64,32);
+        self.up_layer4 = layers.ResnetModule(64,32,Identical_Kernel);
+        self.up_layer5 = layers.ResnetModule(32,4,Identical_Kernel);
+        self.output_layer = nn.ConvTranspose2d(4,1,2,stride = 2);
+        self.up5  = nn.UpsamplingBilinear2d(size = (self.size,self.size));
+        self.init_params();
+
+    def init_params(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m,nn.ConvTranspose2d):
+                init.kaiming_normal_(m.weight, mode='fan_out');
+                if m.bias is not None:
+                    init.constant_(m.bias, 0);
+            elif isinstance(m, nn.BatchNorm2d):
+                init.constant_(m.weight, 1);
+                init.constant_(m.bias, 0);
+            elif isinstance(m, nn.Linear):
+                init.normal(m.weight, std=0.001);
+                if m.bias is not None:
+                    init.constant_(m.bias, 0)
+
+    def forward(self,inputs,noise_info):
+
+        inputs = self.pack_layer(inputs);
+        down_layer1 = self.down_layer1(inputs);
+        down_pool1 = F.max_pool2d(down_layer1,kernel_size = 2,stride = 2);
+        down_layer2 = self.down_layer2(down_pool1);
+        down_pool2 = F.max_pool2d(down_layer2,kernel_size = 2,stride = 2);
+        down_layer3 = self.down_layer3(down_pool2);
+        down_pool3 = F.max_pool2d(down_layer3,kernel_size = 2,stride = 2);
+        down_layer4 = self.down_layer4(down_pool3);
+        down_pool4 = F.max_pool2d(down_layer4,kernel_size = 2,stride = 2);
+        down_layer5 = self.down_layer5(down_pool4);
+        up1 = self.up1(down_layer5,down_layer4);
+        up_layer1 = self.up_layer1(up1);
+        up2  = self.up2(up_layer1,down_layer3);
+        up_layer2 = self.up_layer2(up2);
+        up3 = self.up3(up_layer2,down_layer2);
+        up_layer3 = self.up_layer3(up3);
+        up4 = self.up4(up_layer3,down_layer1);
+        up_layer4 = self.up_layer4(up4);
+        up_layer5 = self.up_layer5(up_layer4);
+        up_layer6 = self.up5(up_layer5);
+        output = self.output_layer(up_layer6);
+
+        return inputs + output;
 
 
 

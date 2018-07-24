@@ -44,4 +44,7 @@ parser.add_argument('--input_type',type =str,default = 'IMG',help = 'Choose inpu
 parser.add_argument('--gt_type',type = str,default  = 'IMG',help = 'Choose gt data type for data reader');
 parser.add_argument('--input_normalize',type = int,default = 16, help = 'bitdepth for input data');
 parser.add_argument('--gt_normalize',type = int,default = 16,help = 'bitdepth for gt data');
+parser.add_argument('--Resize',type=int,default = 0,help = 'whether to resize the input ');
+parser.add_argument('--reSize',type = int, default = 0, help = 'resize parameter to use ');
+parser.add_argument('--AddGaussianNoise',type = int ,default = 0, help = 'whether to add Gaussian Noise');
 

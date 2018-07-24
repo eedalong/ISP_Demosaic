@@ -159,12 +159,11 @@ class VGGLoss(nn.Module):
 
     losses = []
     for o, t in zip(output_f, target_f):
-      t = t.detach();
       losses.append(self.mse(o, t))
     loss = sum(losses)
     if self.weight != 1.0:
       loss = loss * self.weight
-    return loss
+    return loss;
 
   def get_features(self, x):
     """Assumes x in [0, 1]: transform to [-1, 1]."""

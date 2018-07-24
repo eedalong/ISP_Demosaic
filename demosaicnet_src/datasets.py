@@ -4,14 +4,14 @@ import os
 import torch
 import time
 import data_reader
-
+from PIL import Image
 
 def pack_raw(im,args):
     im = (im - args.black_point) / (args.white_point - args.black_point);
-    out = np.dstack((im[::2,::2,0],
+    out = np.dstack((im[::2,::2,1],
                     im[::2,1::2,0],
-                    im[1::2,::2,0],
-                    im[1::2,1::2,0]),
+                    im[1::2,::2,2],
+                    im[1::2,1::2,1]),
                     );
     return out ;
 
@@ -53,7 +53,6 @@ class dataSet(data.Dataset):
         gt_path = paths[1];
         inputs = self.reader.input_loader(input_path);
         gt = self.reader.gt_loader(gt_path);
-
         inputs = pack_raw(inputs,self.args);
         inputs_final = inputs.transpose(2,0,1);
         inputs_final = np.expand_dims(inputs_final,axis = 0);
@@ -62,12 +61,16 @@ class dataSet(data.Dataset):
 
         if self.Random :
             inputs_final = np.zeros((self.args.GET_BATCH ,4,self.args.size,self.args.size));
-            gt_final = np.zeros((self.args.GET_BATCH,3,self.args.size*2,self.args.size * 2));
+            if self.args.gt_type == 'DNG_RAW':
+                gt_final = np.zeros((self.args.GET_BATCH,4,self.args.size,self.args.size));
+            else:
+                gt_final = np.zeros((self.args.GET_BATCH,3,self.args.size*2,self.args.size * 2));
             for read_index in range(self.args.GET_BATCH):
                 tmp_input,tmp_gt = self.reader.RandomCrop(self.size,inputs,gt);
                 tmp_input,tmp_gt = self.reader.RandomFLipH(tmp_input,tmp_gt);
                 tmp_input,tmp_gt = self.reader.RandomFlipV(tmp_input,tmp_gt);
                 tmp_input,tmp_gt = self.reader.RandomTranspose(tmp_input,tmp_gt);
+                tmp_input = self.reader.Resize(tmp_input,(args.reSize,args.reSize));
                 inputs_final[read_index] =tmp_input.transpose(2,0,1).copy();
                 gt_final[read_index] = tmp_gt.transpose(2,0,1).copy();
 
@@ -75,7 +78,6 @@ class dataSet(data.Dataset):
         inputs_final = torch.FloatTensor(inputs_final);
         gt_final = torch.FloatTensor(gt_final);
         data_time_end = time.time();
-
         return inputs_final,gt_final;
 
     def __len__(self):
