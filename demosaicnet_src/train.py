@@ -93,6 +93,7 @@ def main(args):
               'SIDNet':dalong_models.SIDNet(args),
               'BayerNet':dalong_models.BayerNetwork(args),
               'UNet':dalong_models.UNet(args),
+              'DeNet':dalong_models.DeNet(args),
               };
 
     Losses ={'L1Loss':dalong_loss.L1Loss(),

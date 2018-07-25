@@ -28,8 +28,6 @@ class data_reader :
         if img.shape[2] == 4:
             img = img[:,:,:3];
         return np.float32(img) / normalize;
-    def do_white_balance(self,raw,white_balance):
-        raw[] = raw
 
     # if the data type is numpy we assume that the data has been preprocessed to be ready for input
     # i.e. the input data has been preprocessed
@@ -45,11 +43,11 @@ class data_reader :
         img = np.float32(img) / normalize;
         return img
     def dngraw_loader(self,path,normalize):
+        # when training to denoise on HDRPlus dataset , we dont do any preprocess
         img = rawpy.imread(path);
         img = img.raw_image_visible;
         img = np.dstack((img,img,img));
-
-        img = self.pack_raw(img);
+        img = np.float32(img) / normalize ;
         return img
     def input_loader(self,path):
         if self.input_type == 'IMG':
@@ -57,9 +55,13 @@ class data_reader :
         if self.input_type == 'NUMPY':
             return self.numpy_loader(path);
         if self.input_type == 'DNG_IMG':
-            return self.dngimg_loader(self,path,self.input_normalize);
+            return self.dngimg_loader(path,self.args.input_normalize);
         if self.input_type == 'DNG_RAW':
-            return self.dngraw_loader(self.path,self.input_normalize);
+            out = self.dngraw_loader(path,self.args.input_normalize);
+            out = self.pack_raw(out);
+            out = self.BLC(out,self.args.input_white_point,self.args.input_black_point);
+            out = self.WB(out,self.args.input_white_balance);
+            return out;
 
     def gt_loader(self,path):
         if self.gt_type == 'IMG':
@@ -69,13 +71,27 @@ class data_reader :
         if self.gt_type == 'DNG_IMG':
             return self.dngimg_loader(path,self.args.gt_normalize);
         if self.gt_type == 'DNG_RAW':
-            return self.dngraw_loader(path,self.args.gt_normalize);
+            out =self.dngraw_loader(path,self.args.gt_normalize);
+            out = self.pack_raw(out);
+            out = self.BLC(out,self.args.gt_white_point,self.args.gt_black_point);
+            out = self.WB(out,self.args.gt_white_balance);
+            return out
+    def BLC(self,inputs,white_point,black_point):
+        return (inputs - black_point ) / (white_point - black_point);
+    def WB(self,inputs,white_balance):
+        white_balance = white_balance.split();
+        if self.args.bayer_type == 'BGGR':
+            inputs[0] = inputs[0] * float(white_balance[2]);
+            inputs[1] = inputs[1] * float(white_balance[1]);
+            inputs[2] = inputs[2] * float(white_balance[1]);
+            inputs[3] = inputs[3] * float(white_balance[0]);
+        return inputs;
 
     def RandomCrop(self,size,raw,data):
         h,w = raw.shape[0],raw.shape[1];
         th,tw = size;
-        x1 = random.randint(0,w -tw);
-        y1 = random.randint(0,h - th);
+        x1 = random.randint(0,w -tw - 10 );
+        y1 = random.randint(0,h - th - 10);
         if self.args.gt_type == 'DNG_RAW':
             return raw[y1:y1+th,x1:x1+tw,:],data[y1:y1+th,x1:x1+tw,:];
         # else we think it is raw --> JPEG
@@ -109,7 +125,6 @@ class data_reader :
             return raw ;
 
     def pack_raw(self,im):
-        im = (im - self.args.black_point) / (self.args.white_point - self.args.black_point);
         out = np.dstack((im[::2,::2,1],
                         im[::2,1::2,0],
                         im[1::2,::2,2],

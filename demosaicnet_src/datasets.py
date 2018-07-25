@@ -6,25 +6,6 @@ import time
 import data_reader
 from PIL import Image
 
-def pack_raw(im,args):
-    im = (im - args.black_point) / (args.white_point - args.black_point);
-    out = np.dstack((im[::2,::2,1],
-                    im[::2,1::2,0],
-                    im[1::2,::2,2],
-                    im[1::2,1::2,1]),
-                    );
-    return out ;
-
-def unpack_raw(raw):
-    if len(raw.shape) == 3:
-        raw = np.expand_dims(raw,axis = 0);
-    output =  np.zeros((raw.shape[0],3,2*raw.shape[2],2*raw.shape[3]));
-    output[:,1,::2,::2] = raw[:,0,:,:];
-    output[:,0,::2,1::2] = raw[:,1,:,:];
-    output[:,2,1::2,::2] = raw[:,2,:,:];
-    output[:,1,1::2,1::2] = raw[:,3,:,:];
-    return output ;
-
 
 def collate_fn(batch):
     inputs = batch[0][0];
@@ -51,15 +32,18 @@ class dataSet(data.Dataset):
 
         input_path = paths[0];
         gt_path = paths[1];
+
         inputs = self.reader.input_loader(input_path);
         gt = self.reader.gt_loader(gt_path);
-        inputs = pack_raw(inputs,self.args);
+
         inputs_final = inputs.transpose(2,0,1);
         inputs_final = np.expand_dims(inputs_final,axis = 0);
+
         gt_final = gt.transpose(2,0,1);
         gt_final = np.expand_dims(gt_final,axis = 0);
 
         if self.Random :
+
             inputs_final = np.zeros((self.args.GET_BATCH ,4,self.args.size,self.args.size));
             if self.args.gt_type == 'DNG_RAW':
                 gt_final = np.zeros((self.args.GET_BATCH,4,self.args.size,self.args.size));
@@ -70,11 +54,15 @@ class dataSet(data.Dataset):
                 tmp_input,tmp_gt = self.reader.RandomFLipH(tmp_input,tmp_gt);
                 tmp_input,tmp_gt = self.reader.RandomFlipV(tmp_input,tmp_gt);
                 tmp_input,tmp_gt = self.reader.RandomTranspose(tmp_input,tmp_gt);
-                tmp_input = self.reader.Resize(tmp_input,(args.reSize,args.reSize));
                 inputs_final[read_index] =tmp_input.transpose(2,0,1).copy();
                 gt_final[read_index] = tmp_gt.transpose(2,0,1).copy();
 
-        inputs_final = unpack_raw(inputs_final);
+        if self.args.gt_type == 'DNG_RAW':
+            inputs_final = self.reader.unpack_raw_single(inputs_final);
+        else:
+            inputs_final = self.reader.unpack_raw(inputs_final);
+        gt_final = self.reader.unpack_raw_single(gt_final);
+
         inputs_final = torch.FloatTensor(inputs_final);
         gt_final = torch.FloatTensor(gt_final);
         data_time_end = time.time();

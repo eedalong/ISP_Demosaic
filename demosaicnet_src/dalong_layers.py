@@ -111,10 +111,17 @@ class PackBayerMosaicLayer(nn.Module):
             B G B G B
             G R G R B
             '''
-            top[:,0,:,:] = inputs[:,1,::2,::2]; # G
-            top[:,1,:,:] = inputs[:,0,::2,1::2]; # R
-            top[:,2,:,:] = inputs[:,2,1::2,::2]; # B
-            top[:,3,:,:] = inputs[:,1,1::2,1::2]; # G
+            if inputs.size(1) == 3:
+                top[:,0,:,:] = inputs[:,1,::2,::2]; # G
+                top[:,1,:,:] = inputs[:,0,::2,1::2]; # R
+                top[:,2,:,:] = inputs[:,2,1::2,::2]; # B
+                top[:,3,:,:] = inputs[:,1,1::2,1::2]; # G
+            elif inputs.size(1) == 1:
+                top[:,0,:,:] = inputs[:,0,::2,::2]; # G
+                top[:,1,:,:] = inputs[:,0,::2,1::2]; # R
+                top[:,2,:,:] = inputs[:,0,1::2,::2]; # B
+                top[:,3,:,:] = inputs[:,0,1::2,1::2]; # G
+
         if self.bayer_type == 'RGGB':
             '''
             R G R G R

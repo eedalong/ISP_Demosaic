@@ -367,6 +367,7 @@ class DeNet(nn.Module):
         super(DeNet,self).__init__();
         self.args = args ;
         self.pack_layer = layers.PackBayerMosaicLayer();
+        self.down_layer0 = nn.MaxPool2d(kernel_size = self.args.scale_factor,stride = self.args.scale_factor);
         self.down_layer1 = layers.ResnetModule(4,32,Identical_Kernel);
         self.down_layer2 = layers.ResnetModule(32,64,Identical_Kernel);
         self.down_layer3 = layers.ResnetModule(64,128,Identical_Kernel);
@@ -382,7 +383,7 @@ class DeNet(nn.Module):
         self.up_layer4 = layers.ResnetModule(64,32,Identical_Kernel);
         self.up_layer5 = layers.ResnetModule(32,4,Identical_Kernel);
         self.output_layer = nn.ConvTranspose2d(4,1,2,stride = 2);
-        self.up5  = nn.UpsamplingBilinear2d(size = (self.size,self.size));
+        self.up5  = nn.Upsample(scale_factor = self.args.scale_factor,mode = 'bilinear');
         self.init_params();
 
     def init_params(self):
@@ -400,9 +401,9 @@ class DeNet(nn.Module):
                     init.constant_(m.bias, 0)
 
     def forward(self,inputs,noise_info):
-
-        inputs = self.pack_layer(inputs);
-        down_layer1 = self.down_layer1(inputs);
+        inputs_pack = self.pack_layer(inputs);
+        inputs_downsize = self.down_layer0(inputs_pack);
+        down_layer1 = self.down_layer1(inputs_downsize);
         down_pool1 = F.max_pool2d(down_layer1,kernel_size = 2,stride = 2);
         down_layer2 = self.down_layer2(down_pool1);
         down_pool2 = F.max_pool2d(down_layer2,kernel_size = 2,stride = 2);
@@ -420,9 +421,8 @@ class DeNet(nn.Module):
         up4 = self.up4(up_layer3,down_layer1);
         up_layer4 = self.up_layer4(up4);
         up_layer5 = self.up_layer5(up_layer4);
-        up_layer6 = self.up5(up_layer5);
-        output = self.output_layer(up_layer6);
-
+        up5 = self.up5(up_layer5)
+        output = self.output_layer(up5);
         return inputs + output;
 
 
