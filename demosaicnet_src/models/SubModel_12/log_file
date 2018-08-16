@@ -1,0 +1,44 @@
+input_black_point : 0.0
+pack_depth : 3
+input_normalize : 255
+GET_BATCH : 1
+bayer_type : GBRG
+checkpoint_folder : ./models/SubModel_12
+size : 128
+save_freq : 100
+data_dir : 
+max_epoch : 5000
+workers : 8
+AddGaussianNoise : 0
+width : 64
+lr : 0.0001
+TRAIN_BATCH : 16
+pad : 0
+sigma_info : False
+gt_white_balance : 1 1 1
+Resize : 0
+scale_factor : 0
+Center : False
+loss : L1Loss
+lr_change : 1
+gt_normalize : 255
+gt_white_point : 1.0
+input_type : IMG
+flist : /home/xlyuan/ImagesTrain/12/train.txt
+gt_black_point : 0.0
+gt_type : IMG
+input_white_balance : 1 1 1
+TRAIN_GAN : 0
+gpu_use : [0, 1]
+Random : 0
+print_freq : 50
+predemosaic : 0
+depth : 15
+input_white_point : 1.0
+pretrained : 0
+init_model : 
+Evaluate : 0
+model : Submodel
+batchnorm : False
+model_name : DemoisaicNet
+kernel_size : 3

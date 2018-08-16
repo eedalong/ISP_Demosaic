@@ -12,5 +12,7 @@ tmp
 *.png
 :w!
 :w
-
+*.npy
+*.txt
+*.sh
 

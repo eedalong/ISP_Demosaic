@@ -27,7 +27,7 @@ class data_reader :
             img = np.dstack((img,img,img));
         if img.shape[2] == 4:
             img = img[:,:,:3];
-        return np.float32(img) / normalize;
+        return np.float32(img) / (1.0 * normalize);
 
     # if the data type is numpy we assume that the data has been preprocessed to be ready for input
     # i.e. the input data has been preprocessed
@@ -47,13 +47,20 @@ class data_reader :
         img = rawpy.imread(path);
         img = img.raw_image_visible;
         img = np.dstack((img,img,img));
-        img = np.float32(img) / normalize ;
-        return img
+        return img.astype('float32')
     def input_loader(self,path):
         if self.input_type == 'IMG':
-            return self.image_loader(path,self.args.input_normalize);
+            out = self.image_loader(path,self.args.input_normalize);
+            out = self.pack_raw(out);
+            out = self.BLC(out,self.args.input_white_point,self.args.input_black_point);
+            out = self.WB(out,self.args.input_white_balance);
+
+            return out;
+
         if self.input_type == 'NUMPY':
-            return self.numpy_loader(path);
+            out = self.numpy_loader(path);
+            out = self.pack_raw(out);
+            return out;
         if self.input_type == 'DNG_IMG':
             return self.dngimg_loader(path,self.args.input_normalize);
         if self.input_type == 'DNG_RAW':
@@ -81,21 +88,42 @@ class data_reader :
     def WB(self,inputs,white_balance):
         white_balance = white_balance.split();
         if self.args.bayer_type == 'BGGR':
-            inputs[0] = inputs[0] * float(white_balance[2]);
-            inputs[1] = inputs[1] * float(white_balance[1]);
-            inputs[2] = inputs[2] * float(white_balance[1]);
-            inputs[3] = inputs[3] * float(white_balance[0]);
+            inputs[:,:,0] = inputs[:,:,0] * float(white_balance[2]);
+            inputs[:,:,1] = inputs[:,:,1] * float(white_balance[1]);
+            inputs[:,:,2] = inputs[:,:,2] * float(white_balance[1]);
+            inputs[:,:,3] = inputs[:,:,3] * float(white_balance[0]);
+        if self.args.bayer_type == 'GBRG':
+            inputs[:,:,0] = inputs[:,:,0] * float(white_balance[1]);
+            inputs[:,:,1] = inputs[:,:,1] * float(white_balance[2]);
+            inputs[:,:,2] = inputs[:,:,2] * float(white_balance[0]);
+            inputs[:,:,3] = inputs[:,:,3] * float(white_balance[1]);
+
         return inputs;
 
     def RandomCrop(self,size,raw,data):
         h,w = raw.shape[0],raw.shape[1];
         th,tw = size;
-        x1 = random.randint(0,w -tw - 10 );
-        y1 = random.randint(0,h - th - 10);
+        invalid = True  ;
         if self.args.gt_type == 'DNG_RAW':
-            return raw[y1:y1+th,x1:x1+tw,:],data[y1:y1+th,x1:x1+tw,:];
+            while invalid:
+                x1 = random.randint(0,w - 2* tw );
+                y1 = random.randint(0,h - 2* th);
+                raw_result = raw[y1:y1+th,x1:x1+tw,:];
+                data_result = data[y1:y1+th,x1:x1+tw,:];
+                if data_result.shape[:-1] == [size[0],size[0]] and raw_result.shape[:-1] == [size[0],size[0]]:
+                    invalid = False;
         # else we think it is raw --> JPEG
-        return raw[y1:y1+th,x1:x1+tw,:],data[y1*2:y1*2+th*2,x1*2:x1*2+tw*2,:];
+        else :
+            while invalid :
+                x1 = random.randint(0,w - 2* tw );
+                y1 = random.randint(0,h - 2* th);
+                raw_result = raw[y1:y1+th,x1:x1+tw,:];
+                data_result = data[y1*2:y1*2+th*2,x1*2:x1*2+tw*2,:];
+                if data_result.shape[:-1] == (2*size[0],2*size[0]) and raw_result.shape[:-1] == (size[0],size[0]):
+                    invalid = False;
+        return raw_result,data_result;
+
+
     def RandomFLipH(self,raw,data):
 	    if random.random()< 0.5:
 		    return np.flip(raw,axis = 1).copy(),np.flip(data,axis = 1).copy();
@@ -125,21 +153,49 @@ class data_reader :
             return raw ;
 
     def pack_raw(self,im):
-        out = np.dstack((im[::2,::2,1],
-                        im[::2,1::2,0],
-                        im[1::2,::2,2],
-                        im[1::2,1::2,1]),
-                        );
+        # RGGB
+        if self.args.bayer_type == 'RGGB':
+            out = np.dstack((im[::2,::2,0],
+                            im[::2,1::2,1],
+                            im[1::2,::2,1],
+                            im[1::2,1::2,2]),
+                            );
+        if self.args.bayer_type == 'GBRG':
+            out = np.dstack((im[::2,::2,1],
+                            im[::2,1::2,2],
+                            im[1::2,::2,0],
+                            im[1::2,1::2,1]),
+                            );
+        if self.args.bayer_type == 'GRBG':
+            out = np.dstack((im[::2,::2,1],
+                            im[::2,1::2,0],
+                            im[1::2,::2,2],
+                            im[1::2,1::2,1]),
+                            );
+
+
         return out ;
 
     def unpack_raw(self,raw):
         if len(raw.shape) == 3:
             raw = np.expand_dims(raw,axis = 0);
         output =  np.zeros((raw.shape[0],3,2*raw.shape[2],2*raw.shape[3]));
-        output[:,1,::2,::2] = raw[:,0,:,:];
-        output[:,0,::2,1::2] = raw[:,1,:,:];
-        output[:,2,1::2,::2] = raw[:,2,:,:];
-        output[:,1,1::2,1::2] = raw[:,3,:,:];
+        if self.args.bayer_type == 'RGGB':
+            output[:,0,::2,::2] = raw[:,0,:,:];
+            output[:,1,::2,1::2] = raw[:,1,:,:];
+            output[:,1,1::2,::2] = raw[:,2,:,:];
+            output[:,2,1::2,1::2] = raw[:,3,:,:];
+        if self.args.bayer_type == 'GBRG':
+            output[:,1,::2,::2] = raw[:,1,:,:];
+            output[:,2,::2,1::2] = raw[:,2,:,:];
+            output[:,0,1::2,::2] = raw[:,0,:,:];
+            output[:,1,1::2,1::2] = raw[:,1,:,:];
+        if self.args.bayer_type == 'GRBG':
+            output[:,1,::2,::2] = raw[:,1,:,:];
+            output[:,0,::2,1::2] = raw[:,0,:,:];
+            output[:,2,1::2,::2] = raw[:,2,:,:];
+            output[:,1,1::2,1::2] = raw[:,1,:,:];
+
         return output ;
 
     def unpack_raw_single(self,raw):

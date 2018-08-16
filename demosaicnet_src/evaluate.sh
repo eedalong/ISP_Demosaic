@@ -1,25 +1,30 @@
-export CUDA_VISIBLE_DEVICES=0,1
+export CUDA_VISIBLE_DEVICES=3
 
 python evaluate.py \
-    --print_freq=50 \
-    --max_epoch=500 \
-    --flist='./test.txt' \
+    --Evaluate=1 \
+    --flist='/home/xlyuan/ImagesTrain/13/test.txt' \
     --Random=0 \
-    --model='BayerNet' \
-    --loss='L1Loss' \
+    --bayer_type='GBRG' \
+    --gpu_use=0,1 \
+    --model='Submodel' \
     --TRAIN_BATCH=1 \
     --GET_BATCH=1 \
     --input_type='IMG' \
     --gt_type='IMG' \
-    --white_point=65535 \
-    --black_point=0 \
-    --input_normalize=1 \
+    --input_normalize=255 \
     --gt_normalize=255 \
-    --checkpoint_folder='./models/UNet_MSR' \
-    --save_freq=100 \
-    --workers=8 \
-    --size=128 \
-    --init_model='' \
-    --pretrained=1 \
+    --checkpoint_folder='./models/SubModel_13' \
+    --workers=0 \
+    --size=24 \
+    --input_black_point=0 \
+    --input_white_point=1 \
+    --gt_black_point=0 \
+    --gt_white_point=1 \
+    --pretrained=0 \
+    --init_model='DemoisaicNet_state_epoch4500.pth' \
+
+
+
+
 
 

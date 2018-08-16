@@ -1,6 +1,6 @@
 import torch
 import time
-import dalong_models
+import dalong_model
 import numpy as np
 import config as cfg
 from torch.autograd import Variable
@@ -29,13 +29,14 @@ def InverseGamma(image):
 def Gamma(image):
     a = image.copy();
     a [image <= 0.0031308] = a[image <= 0.0031308]*12.92;
-    a[image>0.0031308] = (1+0.055)* (a[image>0.0031308]**(1.0/2.4)) - 0.055;
+    a[image>0.0031308] = (1+0.055)* (a[image>0.0031308]**(1.0/3)) - 0.055;
     a[a<0] = 0;
     a[a>1] = 1;
     return a;
 
 def PSNR(img1,img2,crop,peak_value = 255):
     mse = 0;
+    print('dalong : check crop value = {}'.format(crop));
     if crop[0] !=0 and crop[1] !=0:
         mse = np.mean((img1[:,crop[0]:-crop[0],crop[1]:-crop[1]] - img2[:,crop[0]:-crop[0],crop[1]:-crop[1]])**2);
     else:
@@ -62,53 +63,57 @@ def test(train_loader,model):
             raw_var = raw_var.cuda();
         forward_start = time.time();
         output = model(raw_var,0);
+        # JUST FOR DEBUG
         forward_end = time.time();
         print('dalong log : check forward time  = {}s'.format(forward_end - forward_start));
         batchSize = raw_var.size(0);
-        print('dalong log : check batchSize = {}'.format(batchSize))
         output = output.data.cpu().numpy();
+
         if Flag:
             crop = (np.array(data.shape)[-2:] - np.array(output.shape[-2:])) / 2;
-            c = crop + crop % 2;
+            c = crop;
             print('dalong log : check c  ={}'.format(c));
             Flag = 0;
             continue ;
-        if crop[0] !=0 and crop[1]!=0:
-            output = output[:,:,int(crop[0]%2):-(int(crop[0]%2)),int(crop[1]%2):-int(crop[1]%2)];
         data = data.data.cpu().numpy();
         ssim_start = time.time();
         ssim_value = 0;
         #ssim_value = ssim(torch.FloatTensor(output),torch.FloatTensor(data));
         ssim_end = time.time();
-        print('dalong log : check ssim compute time = {}s'.format(ssim_end - ssim_start));
+        if crop[0] != 0 and crop[1] != 0 :
+            pass
         ssim_meter.update(ssim_value,1);
 
         for index in range(batchSize):
+
             psnr_start = time.time();
-            data_image = (np.clip(output[index,:,:,:] / 0.00390625 + 0.5 ,0,255)).astype('uint8')
+            data_image = (np.clip(output[index,:,:,:] * 255 + 0.5 ,0,255)).astype('uint8')
             save_image = Image.fromarray(data_image.transpose(2,1,0));
             save_image.save('results/image'+str(image_index)+'.jpg');
             input_image = (data[index,:,:,:]*255).astype('uint8');
-            psnr = PSNR(data_image,input_image,crop);
+            psnr = PSNR(data_image,input_image,crop,255);
             input_image = Image.fromarray(input_image.transpose(2,1,0));
             input_image.save('results/input'+str(image_index)+'.jpg');
             psnr_meter.update(psnr);
             tmp_end = time.time();
-            print('dalong log : check for psnr {} consumes {}s'.format(image_index,tmp_end - psnr_start ));
-            print('dalong log the final psnr value is {}'.format(psnr_meter.value));
-            print('dalong log the final ssim value is {}'.format(ssim_meter.value));
             image_index = image_index + 1;
 
+        print('dalong log the final psnr value is {}'.format(psnr_meter.value));
 
 def release_memory(model,args):
         pass
 def main(args):
 
-    models = {'DemosaicNet':dalong_models.DemosaicNet(args.depth,args.width,args.kernel_size,pad = args.pad,batchnorm = args.batchnorm,bayer_type = args.bayer_type),
-              'DeepISP':dalong_models.DeepISP(args),
-              'SIDNet':dalong_models.SIDNet(args),
-              'BayerNet':dalong_models.BayerNetwork(args),
-              'UNet':dalong_models.UNet(args),
+    models = {'DemosaicNet':dalong_model.DemosaicNet(args.depth,args.width,args.kernel_size,pad = args.pad,batchnorm = args.batchnorm,bayer_type = args.bayer_type),
+              'DeepISP':dalong_model.DeepISP(args),
+              'SIDNet':dalong_model.SIDNet(args),
+              'BayerNet':dalong_model.BayerNetwork(args),
+              'UNet':dalong_model.UNet(args),
+              'DeNet':dalong_model.DeNet(args),
+              'UNet2':dalong_model.UNet2(args),
+              'FastDenoisaicking':dalong_model.FastDenoisaicking(args),
+              'FilterModel':dalong_model.FilterModel(args),
+              'Submodel':dalong_model.Submodel(args),
               }
     test_dataset =  datasets.dataSet(args);
     model = models.get(args.model,'dalong');
@@ -138,6 +143,6 @@ if __name__ == '__main__':
 
     parser = cfg.parser;
     args = parser.parse_args();
-    #args.gpu_use = [int(item) for item in list(args.gpu_use[0].split(','))];
+    args.gpu_use = [int(item) for item in list(args.gpu_use[0].split(','))];
     print('all the params set  = {}'.format(args));
     main(args)

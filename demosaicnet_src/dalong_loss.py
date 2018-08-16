@@ -334,3 +334,21 @@ class pixel_perceptural_loss(nn.Module):
         loss = self.pixel_weight*pixel + self.percep_weight * percep;
         #print('dalong log : check loss of two type = {}  {}'.format(pixel,percep));
         return loss ;
+
+class UNet2Loss(nn.Module):
+    def __init__(self,gt_size):
+        super(UNet2Loss,self).__init__();
+        self.criterion0 = L1Loss();
+        self.criterion_others = L1Loss() ;
+        self.down_sample1 = nn.Upsample(size = (gt_size /2,gt_size /2),mode = 'bilinear');
+        self.down_sample2 = nn.Upsample(size = (gt_size /4,gt_size /4),mode = 'bilinear');
+        self.down_sample3 = nn.Upsample(size = (gt_size /8,gt_size /8),mode = 'bilinear');
+        self.weights = [1,0.6,0.3,0.2,0.1];
+    def forward(self,outputs,gt):
+        loss1 = self.criterion0(outputs[0],gt);
+        loss2 = self.criterion_others(outputs[1],self.down_sample1(gt));
+        loss3 = self.criterion_others(outputs[2],self.down_sample2(gt));
+        loss4 = self.criterion_others(outputs[3],self.down_sample3(gt));
+        return loss1 * self.weights[0] + loss2 * self.weights[1] + loss3 * self.weights[2] + loss4 * self.weights[3];
+
+

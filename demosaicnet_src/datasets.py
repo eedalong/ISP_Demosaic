@@ -29,29 +29,25 @@ class dataSet(data.Dataset):
     def __getitem__(self,index):
         data_time_start = time.time();
         paths =  self.pathlist[index][:-1].split();
-
         input_path = paths[0];
         gt_path = paths[1];
-
         inputs = self.reader.input_loader(input_path);
         gt = self.reader.gt_loader(gt_path);
 
         inputs_final = inputs.transpose(2,0,1);
         inputs_final = np.expand_dims(inputs_final,axis = 0);
-
         gt_final = gt.transpose(2,0,1);
         gt_final = np.expand_dims(gt_final,axis = 0);
 
         if self.Random :
-
             inputs_final = np.zeros((self.args.GET_BATCH ,4,self.args.size,self.args.size));
             if self.args.gt_type == 'DNG_RAW':
                 gt_final = np.zeros((self.args.GET_BATCH,4,self.args.size,self.args.size));
             else:
                 gt_final = np.zeros((self.args.GET_BATCH,3,self.args.size*2,self.args.size * 2));
             for read_index in range(self.args.GET_BATCH):
-                tmp_input,tmp_gt = self.reader.RandomCrop(self.size,inputs,gt);
-                tmp_input,tmp_gt = self.reader.RandomFLipH(tmp_input,tmp_gt);
+                #tmp_input,tmp_gt = self.reader.RandomCrop(self.size,inputs,gt);
+                tmp_input,tmp_gt = self.reader.RandomFLipH(inputs,gt);
                 tmp_input,tmp_gt = self.reader.RandomFlipV(tmp_input,tmp_gt);
                 tmp_input,tmp_gt = self.reader.RandomTranspose(tmp_input,tmp_gt);
                 inputs_final[read_index] =tmp_input.transpose(2,0,1).copy();

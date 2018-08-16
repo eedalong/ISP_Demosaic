@@ -22,12 +22,17 @@ parser.add_argument('--data_dir',type = str,default = '',help = 'dataset directo
 parser.add_argument('--flist',type = str,default = '',help = 'dataset list file for training ');
 parser.add_argument('--Center',type = bool,default = False,help = 'whether to crop from center of the image ');
 parser.add_argument('--Random',type = int,default = 1,help ='whether to crop randomly from the image ');
-parser.add_argument('--gpu_use','--list', nargs='+', help='<Required> Set GPUS to USE', required=False);
+#parser.add_argument('--gpu_use','--list', nargs='+', help='<Required> Set GPUS to USE', required=False);
 parser.add_argument('--model_name',type = str,default = 'DemoisaicNet',help = 'set the model name prefix');
 parser.add_argument('--bayer_type',type = str,default = 'GRBG',help = 'set the bayer type for all training data ');
-parser.add_argument('--Evaluate',type = bool,default =False,help = 'Whether to evaluate the dataset');
-parser.add_argument('--white_point',type = float,default = 255,help  = 'white point for raw data ');
-parser.add_argument('--black_point',type = float,default = 0,help = 'black point for raw data ');
+parser.add_argument('--Evaluate',type = int,default =0,help = 'Whether to evaluate the dataset');
+parser.add_argument('--input_white_point',type = float,default = 255,help  = 'white point for raw data ');
+parser.add_argument('--input_black_point',type = float,default = 0,help = 'black point for raw data ');
+parser.add_argument('--gt_white_point',type = float,default = 255,help  = 'white point for raw data ');
+parser.add_argument('--gt_black_point',type = float,default = 0,help = 'black point for raw data ');
+parser.add_argument('--gt_white_balance',type = str,default = '1 1 1',help = 'white_balance for gt ');
+parser.add_argument('--input_white_balance',type = str,default = '1 1 1',help = 'white balance for inputs');
+
 parser.add_argument('--pretrained',type = int,default = 0,help = 'whether init the model with pretrained models');
 parser.add_argument('--predemosaic',type = int,default = 0);
 parser.add_argument('--init_model',type =str,default = '',help = 'choose init model');
@@ -45,6 +50,17 @@ parser.add_argument('--gt_type',type = str,default  = 'IMG',help = 'Choose gt da
 parser.add_argument('--input_normalize',type = int,default = 16, help = 'bitdepth for input data');
 parser.add_argument('--gt_normalize',type = int,default = 16,help = 'bitdepth for gt data');
 parser.add_argument('--Resize',type=int,default = 0,help = 'whether to resize the input ');
-parser.add_argument('--reSize',type = int, default = 0, help = 'resize parameter to use ');
+parser.add_argument('--scale_factor',type = int, default = 0, help = 'resize parameter to use ');
 parser.add_argument('--AddGaussianNoise',type = int ,default = 0, help = 'whether to add Gaussian Noise');
+parser.add_argument('--pack_depth',type = int,default = 3 ,help = 'choose pack depth for pack layer ');
+
+
+# This is for submodels for pipelines
+
+parser.add_argument('--init_submodel',type = str,default = '',help = '<REQUIRE> set model init path for submodels ');
+parser.add_argument('--submodel_num',type = int , default = 16,help = 'decide how many models to use in the submodels');
+parser.add_argument('--init_router',type = str,default = '',help = 'decide which model to use in router model');
+
+
+
 

@@ -49,10 +49,10 @@ class UnpackBayerMosaicLayer(nn.Module):
             top = top.cuda();
 
         for channel in range(3):
-            top[:,channel,::2,::2] = inputs[:,4*c,:,:];
-            top[:,channel,::2,1::2] = inputs[:,4*c+1,:,:];
-            top[:,channel,1::2,::2] = inputs[:,4*c+2,:,:];
-            top[:,channel,1::2,1::2] = inputs[:,4*c+3,:,:];
+            top[:,channel,::2,::2] = inputs[:,4*channel,:,:];
+            top[:,channel,::2,1::2] = inputs[:,4*channel+1,:,:];
+            top[:,channel,1::2,::2] = inputs[:,4*channel+2,:,:];
+            top[:,channel,1::2,1::2] = inputs[:,4*channel+3,:,:];
         return top;
 '''
 supported bayer type
@@ -78,6 +78,12 @@ class BayerMosaicLayer(nn.Module):
             outputs[:,1,::2,1::2] = inputs[:,1,::2,1::2]; # G
             outputs[:,1,1::2,::2] = inputs[:,1,1::2,::2]; #G
             outputs[:,2,1::2,1::2] = inputs[:,2,1::2,1::2]; # B
+        elif self.bayer_type == 'GBRG':
+            outputs[:,1,::2,::2] = inputs[:,1,::2,::2]; # R
+            outputs[:,2,::2,1::2] = inputs[:,2,::2,1::2]; # G
+            outputs[:,0,1::2,::2] = inputs[:,0,1::2,::2]; #G
+            outputs[:,1,1::2,1::2] = inputs[:,1,1::2,1::2]; # B
+
         else :
             print('Dude, This bayer type is not supported for now ,sorry for that');
             exit();
@@ -96,9 +102,11 @@ class CropLayer(nn.Module):
         return outputs;
 
 class PackBayerMosaicLayer(nn.Module):
-    def __init__(self,bayer_type='GRBG' ):
+    def __init__(self,bayer_type='GRBG',pack_depth = 3 ):
         super(PackBayerMosaicLayer,self).__init__();
         self.bayer_type = bayer_type;
+        self.pack_depth = pack_depth;
+
     # receive a raw data
     def forward(self,inputs):
         top = Variable(torch.zeros(inputs.size(0),4,inputs.size(2) / 2,inputs.size(3) / 2));
@@ -106,44 +114,63 @@ class PackBayerMosaicLayer(nn.Module):
             top = top.cuda();
 
         if self.bayer_type == 'GRBG':
+            top = Variable(torch.zeros(inputs.size(0),4,inputs.size(2) / 2,inputs.size(3) / 2));
+            if CUDA_USE:
+                top = top.cuda();
             '''
             G R G R G
             B G B G B
             G R G R B
             '''
-            if inputs.size(1) == 3:
+            if inputs.size(1) == 3 and self.pack_depth == 3:
                 top[:,0,:,:] = inputs[:,1,::2,::2]; # G
                 top[:,1,:,:] = inputs[:,0,::2,1::2]; # R
                 top[:,2,:,:] = inputs[:,2,1::2,::2]; # B
                 top[:,3,:,:] = inputs[:,1,1::2,1::2]; # G
-            elif inputs.size(1) == 1:
+            elif inputs.size(1) == 1 and self.pack_depth == 3:
                 top[:,0,:,:] = inputs[:,0,::2,::2]; # G
                 top[:,1,:,:] = inputs[:,0,::2,1::2]; # R
                 top[:,2,:,:] = inputs[:,0,1::2,::2]; # B
-                top[:,3,:,:] = inputs[:,0,1::2,1::2]; # G
+                top[:,3,:,:] = inputs[:,0,1::2,1::2]; #G
+        if self.bayer_type == 'GBRG' :
+
+            if inputs.size(1) == 3 and self.pack_depth == 1:
+                top = Variable(torch.zeros(inputs.size(0),1,inputs.size(2),inputs.size(3)));
+                if CUDA_USE:
+                    top = top.cuda();
+
+                top[:,0,::2,::2] = inputs[:,1,::2,::2];
+                top[:,0,::2,1::2] = inputs[:,2,::2,1::2];
+                top[:,0,1::2,::2] = inputs[:,0,1::2,::2];
+                top[:,0,1::2,1::2] = inputs[:,1,1::2,1::2];
 
         if self.bayer_type == 'RGGB':
+            top = Variable(torch.zeros(inputs.size(0),4,inputs.size(2) / 2,inputs.size(3) / 2));
+            if CUDA_USE:
+                top = top.cuda();
             '''
-            R G R G R
-            G B G B G
-            R G R G R
-            G B G B G
+            G R G R G
+            B G B G B
+            G R G R B
             '''
-            top[:,0,:,:] = inputs[:,1,::2,1::2]; # G
-            top[:,1,:,:] = inputs[:,0,::2,::2]; # R
-            top[:,2,:,:] = inputs[:,2,1::2,1::2]; # B
-            top[:,3,:,:] = inputs[:,1,1::2,::2]; # G
+            if inputs.size(1) == 3 and self.pack_depth == 3:
+                top[:,0,:,:] = inputs[:,0,::2,::2];
+                top[:,1,:,:] = inputs[:,1,::2,1::2];
+                top[:,2,:,:] = inputs[:,1,1::2,::2];
+                top[:,3,:,:] = inputs[:,2,1::2,1::2];
+
+
 
         return top;
 class UnpackBayerMosaicLayer(nn.Module):
-    def __init__(self):
+    def __init__(self,output_channel = 3):
         super(UnpackBayerMosaicLayer,self).__init__();
+        self.output_channel = output_channel;
     def forward(self,inputs):
         outputs = Variable(torch.zeros(inputs.size(0),3,inputs.size(2)*2,inputs.size(3)*2));
         if CUDA_USE:
             outputs = outputs.cuda();
-
-        for channel in range(3):
+        for channel in range(self.output_channel):
             outputs[:,channel,::2,::2] = inputs[:,4*channel,:,:];
             outputs[:,channel,::2,1::2] = inputs[:,4*channel+1,:,:];
             outputs[:,channel,1::2,::2] = inputs[:,4*channel+2,:,:];
@@ -205,7 +232,7 @@ class isp_block(nn.Module):
         feats = self.pad(feats);
         left_ans = self.block_left(feats);
         right_ans = self.block_right(feats);
-        if residual.size()  == right_ans.size():
+        if cat:
             residual = residual + right_ans / 10;
         else:
             residual = right_ans;
@@ -248,5 +275,52 @@ class DiscriminatorModule(nn.Module):
 
         return self.block(inputs);
 
+class GMPreprocess(nn.Module):
+    def __init__(self):
+        super(GMPreprocess,self).__init__();
 
+    def forward(self,inputs):
+        carrier =  torch.ones((1,1,inputs.size(2),inputs.size(3)));
+        carrier[0,0,::2,1::2] = -1;
+        carrier[0,0,1::2,::2] = -1;
+        carrier = Variable(carrier,requires_grad = False);
+        if cfg.CUDA_USE :
+            carrier = carrier.cuda();
+
+        outputs = inputs * carrier;
+        return outputs
+
+
+class RBPreprocess(nn.Module):
+    def __init__(self):
+        super(RBPreprocess,self).__init__();
+
+    def forward(self,inputs1,inputs2):
+        carrier1 =  torch.ones((1,1,inputs1.size(2),inputs1.size(3)));
+        carrier2 =  torch.ones((1,1,inputs2.size(2),inputs2.size(3)));
+        carrier1[0,0,1::2,:] = -1;
+        carrier2[0,0,:,1::2] = -1;
+        carrier1 = Variable(carrier1,requires_grad = False);
+        carrier2 = Variable(carrier2,requires_grad = False);
+        if cfg.CUDA_USE :
+            carrier1 = carrier1.cuda();
+            carrier2 = carrier2.cuda();
+
+        outputs1 = inputs1 * carrier1;
+        outputs2 = inputs2 * carrier2;
+        return outputs1 , outputs2;
+
+class LPreprocess(nn.Module):
+
+    def __init__(self):
+        super(LPreprocess,self).__init__();
+    def forward(self,inputs):
+        carrier =  torch.ones((1,1,inputs.size(2),inputs.size(3)));
+        carrier[0,0,::2,1::2] = 2;
+        carrier[0,0,1::2,::2] = -2;
+        carrier = Variable(carrier,requires_grad = False);
+        if cfg.CUDA_USE :
+            carrier = carrier.cuda();
+        outputs = inputs * carrier;
+        return outputs
 

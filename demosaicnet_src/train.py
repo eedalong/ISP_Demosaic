@@ -2,7 +2,7 @@ import torch
 import torch.optim as optim
 from torch.autograd import Variable
 import time
-import dalong_models
+import dalong_model
 import torch.nn as nn
 import os
 import utils
@@ -10,6 +10,8 @@ import datasets
 import dalong_loss
 import config as cfg
 losses = utils.AverageMeter();
+
+
 
 def train(train_loader,model,criterion,optimizer,epoch,args):
     model.train(True);
@@ -22,7 +24,7 @@ def train(train_loader,model,criterion,optimizer,epoch,args):
             gt = gt.cuda();
         out = model(inputs,0);
         loss = criterion(out,gt);
-        losses.update(loss.data[0],inputs.size(0));
+        losses.update(loss.item(),inputs.size(0));
         optimizer.zero_grad();
         loss.backward();
         optimizer.step();
@@ -88,12 +90,16 @@ def release_memory(models,losses,args):
 
 def main(args):
 
-    models = {'DemosaicNet':dalong_models.DemosaicNet(args.depth,args.width,args.kernel_size,pad = args.pad,batchnorm = args.batchnorm,bayer_type = args.bayer_type),
-              'DeepISP':dalong_models.DeepISP(args),
-              'SIDNet':dalong_models.SIDNet(args),
-              'BayerNet':dalong_models.BayerNetwork(args),
-              'UNet':dalong_models.UNet(args),
-              'DeNet':dalong_models.DeNet(args),
+    models = {'DemosaicNet':dalong_model.DemosaicNet(args.depth,args.width,args.kernel_size,pad = args.pad,batchnorm = args.batchnorm,bayer_type = args.bayer_type),
+              'DeepISP':dalong_model.DeepISP(args),
+              'SIDNet':dalong_model.SIDNet(args),
+              'BayerNet':dalong_model.BayerNetwork(args),
+              'UNet':dalong_model.UNet(args),
+              'DeNet':dalong_model.DeNet(args),
+              'UNet2':dalong_model.UNet2(args),
+              'FastDenoisaick':dalong_model.FastDenoisaicking(args),
+              'FilterModel':dalong_model.FilterModel(args),
+              'Submodel':dalong_model.Submodel(args),
               };
 
     Losses ={'L1Loss':dalong_loss.L1Loss(),
@@ -103,7 +109,9 @@ def main(args):
              'pixel_perceptural':dalong_loss.pixel_perceptural_loss(),
              'VGGLoss':dalong_loss.VGGLoss(),
              'BCELoss':dalong_loss.BCELoss(),
+             'UNet2Loss':dalong_loss.UNet2Loss(args.size  * 2),
              };
+    print('dalong log : all models init successfully');
     release_memory(models,Losses,args);
     train_dataset = datasets.dataSet(args);
     collate_fn = datasets.collate_fn;
@@ -115,12 +123,12 @@ def main(args):
     adversarial_criterion = None;
     optim_discriminator = None;
     if args.TRAIN_GAN :
-        discriminator = dalong_models.Discriminator();
+        discriminator = dalong_model.Discriminator();
         discriminator = torch.nn.DataParallel(discriminator);
         adversarial_criterion = dalong_loss.BCELoss();
-        optim_discriminator = optim.Adam(discriminator.parameters(),lr = 1e-4,betas = (0.9,0.999),eps = 1e-08,weight_decay =1e-08);
+        optim_discriminator = torch.optim.Adam(discriminator.parameters(),lr = 1e-4,betas = (0.9,0.999),eps = 1e-08,weight_decay =1e-08);
     if cfg.CUDA_USE :
-        model = torch.nn.DataParallel(model);
+        #model = torch.nn.DataParallel(model);
         model = model.cuda();
         if args.TRAIN_GAN :
             discriminator = discriminator.cuda();
