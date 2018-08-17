@@ -1,12 +1,12 @@
 export CUDA_VISIBLE_DEVICES=3
 
-python train.py \
+python train_classifier.py \
     --print_freq=50 \
     --max_epoch=5000 \
-    --flist='/home/xlyuan/ImagesTrainAll/15/train.txt' \
+    --flist='/home/xlyuan/ImagesAll/train.txt' \
     --Random=1 \
     --bayer_type='GBRG' \
-    --model='Submodel' \
+    --model='Encoder' \
     --loss='L1Loss' \
     --TRAIN_BATCH=16 \
     --GET_BATCH=1 \
@@ -14,10 +14,10 @@ python train.py \
     --gt_type='IMG' \
     --input_normalize=255 \
     --gt_normalize=255 \
-    --checkpoint_folder='./models/SubModel_15' \
-    --save_freq=100 \
+    --checkpoint_folder='./models/Encoder' \
+    --save_freq=10 \
     --workers=8 \
-    --size=64 \
+    --size=128 \
     --pretrained=0 \
     --lr=0.0001 \
     --input_black_point=0 \
