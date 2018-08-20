@@ -128,7 +128,6 @@ def main(args):
         adversarial_criterion = dalong_loss.BCELoss();
         optim_discriminator = torch.optim.Adam(discriminator.parameters(),lr = 1e-4,betas = (0.9,0.999),eps = 1e-08,weight_decay =1e-08);
     if cfg.CUDA_USE :
-        #model = torch.nn.DataParallel(model);
         model = model.cuda();
         if args.TRAIN_GAN :
             discriminator = discriminator.cuda();
@@ -147,7 +146,6 @@ if __name__ == '__main__':
 
     parser = cfg.parser;
     args = parser.parse_args();
-    args.gpu_use = [int(item) for item in list(args.gpu_use[0].split(','))];
     print('all the params set  = {}'.format(args));
     if not os.path.exists(args.checkpoint_folder):
         os.makedirs(args.checkpoint_folder);

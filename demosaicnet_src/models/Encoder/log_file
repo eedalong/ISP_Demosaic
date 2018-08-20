@@ -7,11 +7,13 @@ checkpoint_folder : ./models/Encoder
 size : 24
 save_freq : 15
 data_dir : 
+init_submodel : 
 max_epoch : 9
 workers : 0
 AddGaussianNoise : 0
 width : 64
 lr : 0.0001
+init_router : 
 TRAIN_BATCH : 1
 pad : 0
 sigma_info : False
@@ -19,24 +21,24 @@ gt_white_balance : 1 1 1
 Resize : 0
 scale_factor : 0
 Center : False
-loss : 
 lr_change : 1
 gt_normalize : 255
 gt_white_point : 1.0
 input_type : IMG
-flist : /home/xlyuan/Images/test.txt
+flist : /home/xlyuan/ImagesAll/test.txt
 gt_black_point : 0.0
 gt_type : IMG
 input_white_balance : 1 1 1
+submodel_num : 16
 TRAIN_GAN : 0
-gpu_use : [0, 1]
+loss : 
 Random : 1
 print_freq : 10
 predemosaic : 0
 depth : 15
 input_white_point : 1.0
 pretrained : 0
-init_model : DemoisaicNet_state_epoch3300.pth
+init_model : DemoisaicNet_state_epoch160.pth
 Evaluate : 1
 model : Encoder
 batchnorm : False

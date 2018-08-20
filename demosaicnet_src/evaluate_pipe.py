@@ -9,6 +9,8 @@ import shutil
 import datasets
 import utils
 from PIL import Image
+import dalong_loss
+from skimage.measure import compare_ssim as ssim
 
 #####################################################################
 #           WHEN EVALUATING BATCHSIZE WILL ALWAYS BE 1              #
@@ -22,7 +24,8 @@ all_samples = 0;
 def PSNR(inputs1,inputs2):
     return 10 * np.log10(255.0**2 /(np.mean((inputs1 - inputs2)**2)));
 psnr_meter = utils.AverageMeter();
-
+ssim_meter = utils.AverageMeter();
+index_counter = np.zeros((16,))
 def Test(test_loader,submodels,router):
     global correct , all_samples;
     image_index = 0;
@@ -37,28 +40,48 @@ def Test(test_loader,submodels,router):
         print('dalong log : check inputs size = {}'.format(inputs.size()));
         if cfg.CUDA_USE:
             inputs = inputs.cuda();
-        num_width = int(width / 128) ;
-        num_height = int(height / 128);
-        final_image = np.zeros((3,128 * num_height,128 * num_width));
+        num_width = int(width / 120) ;
+        num_height = int(height / 120);
+        final_image = np.zeros((3,120 * num_height,120 * num_width));
 
         for height_index in range(num_height - 1):
             for width_index in range(num_width - 1) :
-                inputs_patch = inputs[0,:,height_index * 128: (height_index + 1)* 128,width_index * 128 : (width_index + 1)*128];
+                up = max(height_index * 120 - 4,0) ;
+                up_pad = height_index *120  - up;
+                bottom = min((height_index+1) * 120 + 4,num_height*120) ;
+                bottom_pad = bottom - (height_index+1) *120;
+                left = max(width_index * 120 - 4,0) ;
+                left_pad = width_index *120  - left;
+                right = min((width_index+1) * 120 + 4,num_width * 120);
+                right_pad =  right - (width_index + 1) * 120  ;
+                patch_width = right- left ;
+                patch_height = bottom - up;
+
+                inputs_patch = inputs[0,:,up:bottom,left : right];
                 inputs_patch = inputs_patch.unsqueeze(0);
                 outputs = router(inputs_patch,0);
                 predicted_index = torch.argmax(outputs,dim = 1);
-                print('dalong log : predicted index = {}'.format(predicted_index));
+                index_counter[predicted_index] = index_counter[predicted_index] + 1;
                 outputs_patch = submodels[predicted_index](inputs_patch,0);
                 outputs_patch = outputs_patch.data.cpu().numpy();
-                final_image[:,height_index * 128 : (height_index + 1)* 128, width_index * 128 : (width_index + 1)* 128] = np.clip(outputs_patch[0,:,:,:]*255,0,255);
+
+                final_image[:,height_index * 120 : (height_index + 1)* 120, width_index * 120 : (width_index + 1)* 120] = np.clip(outputs_patch[0,:,up_pad:patch_height-bottom_pad,left_pad:patch_width - right_pad]*255,0,255);
         gt = gt.data.cpu().numpy();
-        gt = np.clip(gt[0,:,:num_height * 128 ,:num_width * 128]*255,0,255);
-        psnr = PSNR(gt.astype('uint8'),final_image.astype('uint8'));
-        final_image = Image.fromarray(final_image.transpose(1,2,0).astype('uint8'));
+        gt = np.clip(gt[0,:,:num_height * 120 ,:num_width * 120]*255,0,255);
+        gt = gt.astype('uint8').transpose(1,2,0);
+        final_image = final_image.astype('uint8').transpose(1,2,0);
+
+        psnr = PSNR(gt,final_image);
+        ssim_value = 0 #ssim(gt,final_image,multichannel = True);
+        final_image = Image.fromarray(final_image);
         final_image.save('./results/image_'+str(image_index)+'.jpg');
+        gt_image = Image.fromarray(gt);
+        gt_image.save('./results/gt_'+str(image_index)+'.jpg');
         image_index = image_index + 1;
         psnr_meter.update(psnr,1);
-        print('dalong log : check psnr =  {}'.format(psnr_meter.value))
+        ssim_meter.update(ssim_value,1);
+        print('dalong log : check psnr =  {} ssim = {}'.format(psnr_meter.value,ssim_meter.value));
+        print('dalong log : check module choice = {}'.format(index_counter *1.0 / np.sum(index_counter)))
 
 
 def main(args):
@@ -66,7 +89,6 @@ def main(args):
     for model_index in range(args.submodel_num):
         submodel  = dalong_model.Submodel(args);
         if cfg.CUDA_USE :
-            submodel =  torch.nn.DataParallel(submodel);
             submodel = submodel.cuda();
         submodels.append(submodel);
 

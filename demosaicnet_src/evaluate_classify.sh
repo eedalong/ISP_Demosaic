@@ -2,10 +2,9 @@ export CUDA_VISIBLE_DEVICES=3
 
 python evaluate_classify.py \
     --Evaluate=1 \
-    --flist='/home/xlyuan/Images/test.txt' \
+    --flist='/home/xlyuan/ImagesAll/test.txt' \
     --Random=1 \
     --bayer_type='GBRG' \
-    --gpu_use=0,1 \
     --model='Encoder' \
     --TRAIN_BATCH=1 \
     --GET_BATCH=1 \
@@ -21,7 +20,7 @@ python evaluate_classify.py \
     --gt_black_point=0 \
     --gt_white_point=1 \
     --pretrained=0 \
-    --init_model='DemoisaicNet_state_epoch3300.pth' \
+    --init_model='DemoisaicNet_state_epoch160.pth' \
 
 
 

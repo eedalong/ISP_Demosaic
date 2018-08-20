@@ -54,7 +54,6 @@ if __name__ == '__main__':
 
     parser = cfg.parser;
     args = parser.parse_args();
-    args.gpu_use = [int(item) for item in list(args.gpu_use[0].split(','))];
     print('all the params set  = {}'.format(args));
     if not os.path.exists(args.checkpoint_folder):
         os.makedirs(args.checkpoint_folder);

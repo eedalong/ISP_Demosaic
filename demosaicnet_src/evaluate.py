@@ -128,7 +128,7 @@ def main(args):
 
     init_model = os.path.join(args.checkpoint_folder,args.init_model);
     if cfg.CUDA_USE :
-        model = torch.nn.DataParallel(model);
+#        model = torch.nn.DataParallel(model);
         model = model.cuda();
 
     if args.init_model != '':
@@ -143,6 +143,5 @@ if __name__ == '__main__':
 
     parser = cfg.parser;
     args = parser.parse_args();
-    args.gpu_use = [int(item) for item in list(args.gpu_use[0].split(','))];
     print('all the params set  = {}'.format(args));
     main(args)

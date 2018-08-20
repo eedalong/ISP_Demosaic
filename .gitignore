@@ -12,7 +12,7 @@ tmp
 *.png
 :w!
 :w
-*.npy
 *.txt
-*.sh
-
+*.npy
+*_file
+./demosaicnet_src/models/*
