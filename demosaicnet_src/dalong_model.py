@@ -854,34 +854,5 @@ class Submodel(nn.Module):
         outputs = self.postLayer2(outputs3);
         return outputs;
 
-
-
-
-
-
-
-def Draw_Graph():
-    from torchviz import dot
-    import pydot
-    args = 1;
-    model = SIDNet(args);
-    model = model.cuda();
-    model.eval();
-    layer = layers.CropLayer();
-
-    inputs_raw = Variable(torch.rand((1,3,132,220)));
-    inputs_sigma = Variable(torch.rand(1,1,64,64));
-    if cfg.CUDA_USE:
-        inputs_raw = inputs_raw.cuda();
-        inputs_sigma = inputs_sigma.cuda();
-    outputs = model(inputs_raw,inputs_sigma);
-    outputs = layer(outputs.outputs);
-    '''
-    dot_file = dot.make_dot(outputs,dict(model.named_parameters()));
-    dot_file.save('model_arch.dot');
-    (graph,) = pydot.graph_from_dot_file('model_arch.dot');
-    img_name = '{}.png'.format('model_arch.dot');
-    graph.write_png(img_name)
-    '''
 if __name__ == '__main__':
-    Draw_Graph();
+    print('Hello World !')

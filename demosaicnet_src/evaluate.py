@@ -128,7 +128,6 @@ def main(args):
 
     init_model = os.path.join(args.checkpoint_folder,args.init_model);
     if cfg.CUDA_USE :
-#        model = torch.nn.DataParallel(model);
         model = model.cuda();
 
     if args.init_model != '':
