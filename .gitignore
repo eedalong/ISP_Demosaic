@@ -16,3 +16,7 @@ tmp
 *.npy
 *_file
 ./demosaicnet_src/models/*
+*.pth
+*.npy
+*.sh
+*_file

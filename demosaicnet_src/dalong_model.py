@@ -98,7 +98,7 @@ class BayerNetwork(nn.Module):
 
         self.mosaic_mask = layers.BayerMosaicLayer(bayer_type = 'GRBG');
         self.crop_like = layers.CropLayer();
-        self.depth = args.depth
+        self.depth = 15
         self.width = args.width
         layers1 = OrderedDict([
             ("pack_mosaic", nn.Conv2d(3, 4, 2, stride=2)),  # Downsample 2x2 to re-establish translation invariance
@@ -147,6 +147,7 @@ class BayerNetwork(nn.Module):
         model_parameters = self.parameters();
         for param in param_name :
             tmp_param = np.load('./pretrained/bayer/' + param[:-1]);
+            print('dalong log : check bayer parameter shape = {}'.format(tmp_param.shape));
             next(model_parameters).data = torch.Tensor(tmp_param);
             #tmp_param = np.load('./pretrained/bayer/' + param[:-1]);
             #next(model_parameters).data = torch.Tensor(tmp_param);
@@ -154,6 +155,10 @@ class BayerNetwork(nn.Module):
     def forward(self, samples,no_use):
         # 1/4 resolution features
         mosaic = self.mosaic_mask(samples);
+        #print(mosaic[0,0,:6,:6]);
+        #print(samples[0,0,:6,:6]);
+        #print(no_use[0,0,:6,:6]);
+        print(mosaic.size(),samples.size(),no_use.size())
         noise  = Variable(torch.FloatTensor(np.zeros((samples.size(0),1,samples.size(2),samples.size(3)))));
         features = self.main_processor(mosaic)
         filters, masks = features[:, :self.width], features[:, self.width:]
@@ -766,7 +771,6 @@ class Encoder(nn.Module):
         self.init_with_pretrained();
 
     def init_with_pretrained(self):
-        model_parameters = self.parameters();
         param_name = open('./pretrained/encoder/params.txt');
         param_list = param_name.readlines();
         model_parameters = self.parameters();
@@ -804,29 +808,41 @@ class Encoder(nn.Module):
         return outputs;
 
 class Submodel(nn.Module):
-    def __init__(self,args):
+    def __init__(self,args,depth =  3):
         super(Submodel,self).__init__();
         self.args = args;
+        self.depth = depth;
         channel = 64;
-        self.packlayer = layers.PackBayerMosaicLayer(args.bayer_type);
-        self.layer1= nn.Sequential(
-            nn.Conv2d(4,channel,kernel_size = 3, padding = 1),
-            nn.LeakyReLU(negative_slope = 0.2),
-            nn.Conv2d(channel,channel,kernel_size = 3,padding = 1),
-            nn.LeakyReLU(negative_slope = 0.2),
-            nn.Conv2d(channel,12,kernel_size = 3,padding = 1),
-            nn.LeakyReLU(negative_slope = 0.2),
-            nn.ConvTranspose2d(12,3,kernel_size = 2,stride = 2,groups = 3),
-            nn.LeakyReLU(negative_slope = 0.2),
-        );
+        self.Crop = layers.CropLayer();
+        self.layer1 = OrderedDict();
+        self.layer1['pack_layer'] = layers.PackBayerMosaicLayer(args.bayer_type);
+        for index in range(depth):
+            in_channel = 64;
+            out_channel = 64;
+            if index == 0:
+                in_channel = 4;
+            if index == depth - 1:
+                out_channel = 12;
+            self.layer1['layer_{}'.format(index)] = nn.Sequential(
+                nn.Conv2d(in_channel,out_channel,kernel_size = 3),
+                nn.LeakyReLU(negative_slope = 0.2),
+            );
+        self.layer1 = nn.Sequential(self.layer1);
         self.postLayer1 = nn.Sequential(
-            nn.Conv2d(6,3,kernel_size = 3,padding = 1),
+            nn.ConvTranspose2d(12,3,kernel_size = 2,stride = 2,groups = 3),
+            nn.LeakyReLU(negative_slope = 0.2)
+        );
+        self.postLayer2 = nn.Sequential(
+            nn.Conv2d(6,3,kernel_size = 3),
             nn.LeakyReLU(negative_slope = 0.2),
-            nn.Conv2d(3,3,kernel_size = 3,padding = 1),
-        )
+            nn.Conv2d(3,3,kernel_size = 3),
+        );
         self.init_params();
+        if self.depth > 1:
+            self.init_with_pretrained();
     def init_params(self):
         for m in self.modules():
+            print(m);
             if isinstance(m, nn.Conv2d) or isinstance(m,nn.ConvTranspose2d):
                 init.kaiming_normal_(m.weight, mode='fan_out');
                 if m.bias is not None:
@@ -838,42 +854,31 @@ class Submodel(nn.Module):
                 init.normal(m.weight, std=0.001);
                 if m.bias is not None:
                     init.constant_(m.bias, 0);
+    def init_with_pretrained(self):
+        model_parameters = self.parameters();
+        root = './pretrained/bayer/conv{}_{}.npy';
+        for index in range(self.depth):
+            param_index = index+1 ;
+            if index == self.depth -1 and index !=0 :
+                param_index  = 16 ;
+            weights = np.load(root.format(param_index,0));
+            next(model_parameters).data = torch.Tensor(weights);
+            bias = np.load(root.format(param_index,1));
+            next(model_parameters).data = torch.Tensor(bias);
+        ##Post_Layer1
+        weights = np.load(root.format(17,0));
+        next(model_parameters).data = torch.Tensor(weights);
+        bias = np.load(root.format(17,1));
+        next(model_parameters).data = torch.Tensor(bias);
+
 
     def forward(self,inputs,useless):
-        pack_input = self.packlayer(inputs);
-        outputs1 = self.layer1(pack_input);
-        outputs2 = torch.cat((outputs1,inputs),1);
-        outputs = self.postLayer1(outputs2);
+        outputs1 = self.layer1(inputs);
+        outputs2 = self.postLayer1(outputs1);
+        inputs = self.Crop(inputs,outputs2)
+        outputs3 = torch.cat((outputs2,inputs),1);
+        outputs = self.postLayer2(outputs3);
         return outputs;
 
-
-
-
-
-
-
-def Draw_Graph():
-    from torchviz import dot
-    import pydot
-    args = 1;
-    model = SIDNet(args);
-    model = model.cuda();
-    model.eval();
-    layer = layers.CropLayer();
-
-    inputs_raw = Variable(torch.rand((1,3,132,220)));
-    inputs_sigma = Variable(torch.rand(1,1,64,64));
-    if cfg.CUDA_USE:
-        inputs_raw = inputs_raw.cuda();
-        inputs_sigma = inputs_sigma.cuda();
-    outputs = model(inputs_raw,inputs_sigma);
-    outputs = layer(outputs.outputs);
-    '''
-    dot_file = dot.make_dot(outputs,dict(model.named_parameters()));
-    dot_file.save('model_arch.dot');
-    (graph,) = pydot.graph_from_dot_file('model_arch.dot');
-    img_name = '{}.png'.format('model_arch.dot');
-    graph.write_png(img_name)
-    '''
 if __name__ == '__main__':
-    Draw_Graph();
+    print('Hello World !')

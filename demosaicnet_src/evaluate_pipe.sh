@@ -2,7 +2,7 @@ export CUDA_VISIBLE_DEVICES=3
 
 python evaluate_pipe.py \
     --Evaluate=1 \
-    --flist='/home/xlyuan/MIT_Test/test.txt' \
+    --flist='/home/xlyuan/Pipe_Test/test.txt' \
     --Random=0 \
     --bayer_type='GBRG' \
     --GET_BATCH=1 \
@@ -16,7 +16,7 @@ python evaluate_pipe.py \
     --gt_black_point=0 \
     --gt_white_point=1 \
     --pretrained=0 \
-    --init_router='DemoisaicNet_state_epoch150.pth' \
+    --init_router='DemoisaicNet_state_epoch160.pth' \
     --init_submodel='\
      DemoisaicNet_state_epoch250.pth\
     DemoisaicNet_state_epoch750.pth\

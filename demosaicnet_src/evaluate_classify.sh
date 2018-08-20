@@ -20,7 +20,7 @@ python evaluate_classify.py \
     --gt_black_point=0 \
     --gt_white_point=1 \
     --pretrained=0 \
-    --init_model='DemoisaicNet_state_epoch160.pth' \
+    --init_model='DemoisaicNet_state_epoch200.pth' \
 
 
 

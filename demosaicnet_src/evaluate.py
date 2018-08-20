@@ -59,16 +59,17 @@ def test(train_loader,model):
             raw = torch.FloatTensor(raw_pad);
 
         raw_var = Variable(raw.contiguous());
+        data = Variable(data);
         if cfg.CUDA_USE :
             raw_var = raw_var.cuda();
+            data = data.cuda();
         forward_start = time.time();
-        output = model(raw_var,0);
+        output = model(raw_var,data);
         # JUST FOR DEBUG
         forward_end = time.time();
         print('dalong log : check forward time  = {}s'.format(forward_end - forward_start));
         batchSize = raw_var.size(0);
         output = output.data.cpu().numpy();
-
         if Flag:
             crop = (np.array(data.shape)[-2:] - np.array(output.shape[-2:])) / 2;
             c = crop;
@@ -113,7 +114,7 @@ def main(args):
               'UNet2':dalong_model.UNet2(args),
               'FastDenoisaicking':dalong_model.FastDenoisaicking(args),
               'FilterModel':dalong_model.FilterModel(args),
-              'Submodel':dalong_model.Submodel(args),
+              'Submodel':dalong_model.Submodel(args,args.depth),
               }
     test_dataset =  datasets.dataSet(args);
     model = models.get(args.model,'dalong');
@@ -128,7 +129,6 @@ def main(args):
 
     init_model = os.path.join(args.checkpoint_folder,args.init_model);
     if cfg.CUDA_USE :
-#        model = torch.nn.DataParallel(model);
         model = model.cuda();
 
     if args.init_model != '':

@@ -99,7 +99,7 @@ def main(args):
               'UNet2':dalong_model.UNet2(args),
               'FastDenoisaick':dalong_model.FastDenoisaicking(args),
               'FilterModel':dalong_model.FilterModel(args),
-              'Submodel':dalong_model.Submodel(args),
+              'Submodel':dalong_model.Submodel(args,args.depth),
               };
 
     Losses ={'L1Loss':dalong_loss.L1Loss(),

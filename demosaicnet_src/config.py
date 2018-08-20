@@ -22,7 +22,6 @@ parser.add_argument('--data_dir',type = str,default = '',help = 'dataset directo
 parser.add_argument('--flist',type = str,default = '',help = 'dataset list file for training ');
 parser.add_argument('--Center',type = bool,default = False,help = 'whether to crop from center of the image ');
 parser.add_argument('--Random',type = int,default = 1,help ='whether to crop randomly from the image ');
-#parser.add_argument('--gpu_use','--list', nargs='+', help='<Required> Set GPUS to USE', required=False);
 parser.add_argument('--model_name',type = str,default = 'DemoisaicNet',help = 'set the model name prefix');
 parser.add_argument('--bayer_type',type = str,default = 'GRBG',help = 'set the bayer type for all training data ');
 parser.add_argument('--Evaluate',type = int,default =0,help = 'Whether to evaluate the dataset');
@@ -60,7 +59,8 @@ parser.add_argument('--pack_depth',type = int,default = 3 ,help = 'choose pack d
 parser.add_argument('--init_submodel',type = str,default = '',help = '<REQUIRE> set model init path for submodels ');
 parser.add_argument('--submodel_num',type = int , default = 16,help = 'decide how many models to use in the submodels');
 parser.add_argument('--init_router',type = str,default = '',help = 'decide which model to use in router model');
-
+parser.add_argument('--Crop',type=int,default = 0,help = 'decide if crop will be done to train images');
+parser.add_argument('--submodel_depth',type = str,default = '',help = '<REQUIRE> set depth for for submodels ');
 
 
 

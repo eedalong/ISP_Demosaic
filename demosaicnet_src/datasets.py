@@ -46,8 +46,8 @@ class dataSet(data.Dataset):
             else:
                 gt_final = np.zeros((self.args.GET_BATCH,3,self.args.size*2,self.args.size * 2));
             for read_index in range(self.args.GET_BATCH):
-                #tmp_input,tmp_gt = self.reader.RandomCrop(self.size,inputs,gt);
-                tmp_input,tmp_gt = self.reader.RandomFLipH(inputs,gt);
+                tmp_input,tmp_gt = self.reader.RandomCrop(self.size,inputs,gt);
+                tmp_input,tmp_gt = self.reader.RandomFLipH(tmp_input,tmp_gt);
                 tmp_input,tmp_gt = self.reader.RandomFlipV(tmp_input,tmp_gt);
                 tmp_input,tmp_gt = self.reader.RandomTranspose(tmp_input,tmp_gt);
                 inputs_final[read_index] =tmp_input.transpose(2,0,1).copy();
@@ -62,7 +62,7 @@ class dataSet(data.Dataset):
         inputs_final = torch.FloatTensor(inputs_final);
         gt_final = torch.FloatTensor(gt_final);
         data_time_end = time.time();
-        return inputs_final,gt_final;
+        return gt_final,gt_final;
 
     def __len__(self):
         return len(self.pathlist);

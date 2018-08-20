@@ -30,10 +30,10 @@ conv14_0.npy
 conv14_1.npy
 conv15_0.npy
 conv15_1.npy
-residual_0.npy
-residual_1.npy
-unpack_mosaick_0.npy
-unpack_mosaick_1.npy
+conv16_0.npy
+conv16_1.npy
+conv17_0.npy
+conv17_1.npy
 post_conv1_0.npy
 post_conv1_1.npy
 output_0.npy

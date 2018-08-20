@@ -101,6 +101,8 @@ class data_reader :
         return inputs;
 
     def RandomCrop(self,size,raw,data):
+        if self.args.Crop ==0 :
+            return raw,data;
         h,w = raw.shape[0],raw.shape[1];
         th,tw = size;
         invalid = True  ;
@@ -186,15 +188,15 @@ class data_reader :
             output[:,1,1::2,::2] = raw[:,2,:,:];
             output[:,2,1::2,1::2] = raw[:,3,:,:];
         if self.args.bayer_type == 'GBRG':
-            output[:,1,::2,::2] = raw[:,1,:,:];
-            output[:,2,::2,1::2] = raw[:,2,:,:];
-            output[:,0,1::2,::2] = raw[:,0,:,:];
-            output[:,1,1::2,1::2] = raw[:,1,:,:];
+            output[:,1,::2,::2] = raw[:,0,:,:];
+            output[:,2,::2,1::2] = raw[:,1,:,:];
+            output[:,0,1::2,::2] = raw[:,2,:,:];
+            output[:,1,1::2,1::2] = raw[:,3,:,:];
         if self.args.bayer_type == 'GRBG':
-            output[:,1,::2,::2] = raw[:,1,:,:];
-            output[:,0,::2,1::2] = raw[:,0,:,:];
+            output[:,1,::2,::2] = raw[:,0,:,:];
+            output[:,0,::2,1::2] = raw[:,1,:,:];
             output[:,2,1::2,::2] = raw[:,2,:,:];
-            output[:,1,1::2,1::2] = raw[:,1,:,:];
+            output[:,1,1::2,1::2] = raw[:,3,:,:];
 
         return output ;
 

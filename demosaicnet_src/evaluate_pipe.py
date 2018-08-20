@@ -11,7 +11,7 @@ import utils
 from PIL import Image
 import dalong_loss
 from skimage.measure import compare_ssim as ssim
-
+import time
 #####################################################################
 #           WHEN EVALUATING BATCHSIZE WILL ALWAYS BE 1              #
 #####################################################################
@@ -32,7 +32,7 @@ def Test(test_loader,submodels,router):
     for model_index in range(len(submodels)):
         submodels[model_index].eval();
     router = router.eval();
-
+    total_time = 0;
     for i ,(inputs,gt) in enumerate(test_loader):
         inputs = Variable(inputs);
         height = inputs.size(2);
@@ -43,7 +43,7 @@ def Test(test_loader,submodels,router):
         num_width = int(width / 120) ;
         num_height = int(height / 120);
         final_image = np.zeros((3,120 * num_height,120 * num_width));
-
+        total_time = 0;
         for height_index in range(num_height - 1):
             for width_index in range(num_width - 1) :
                 up = max(height_index * 120 - 4,0) ;
@@ -59,10 +59,14 @@ def Test(test_loader,submodels,router):
 
                 inputs_patch = inputs[0,:,up:bottom,left : right];
                 inputs_patch = inputs_patch.unsqueeze(0);
+                start =  time.time();
                 outputs = router(inputs_patch,0);
+                total_time = total_time + time.time() - start;
                 predicted_index = torch.argmax(outputs,dim = 1);
                 index_counter[predicted_index] = index_counter[predicted_index] + 1;
+                start = time.time();
                 outputs_patch = submodels[predicted_index](inputs_patch,0);
+                total_time = total_time + time.time() - start;
                 outputs_patch = outputs_patch.data.cpu().numpy();
 
                 final_image[:,height_index * 120 : (height_index + 1)* 120, width_index * 120 : (width_index + 1)* 120] = np.clip(outputs_patch[0,:,up_pad:patch_height-bottom_pad,left_pad:patch_width - right_pad]*255,0,255);
@@ -82,6 +86,7 @@ def Test(test_loader,submodels,router):
         ssim_meter.update(ssim_value,1);
         print('dalong log : check psnr =  {} ssim = {}'.format(psnr_meter.value,ssim_meter.value));
         print('dalong log : check module choice = {}'.format(index_counter *1.0 / np.sum(index_counter)))
+        print('dalong log : check total time and time for each block  = {} {}'.format(total_time,total_time * 1.0 /(num_height * num_width)));
 
 
 def main(args):
