@@ -12,7 +12,8 @@ tmp
 *.png
 :w!
 :w
-*.npy
 *.txt
+*.pth
+*.npy
 *.sh
-
+*_file

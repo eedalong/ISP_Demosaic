@@ -804,29 +804,37 @@ class Encoder(nn.Module):
         return outputs;
 
 class Submodel(nn.Module):
-    def __init__(self,args):
+    def __init__(self,args,depth =  3):
         super(Submodel,self).__init__();
         self.args = args;
         channel = 64;
-        self.packlayer = layers.PackBayerMosaicLayer(args.bayer_type);
-        self.layer1= nn.Sequential(
-            nn.Conv2d(4,channel,kernel_size = 3, padding = 1),
-            nn.LeakyReLU(negative_slope = 0.2),
-            nn.Conv2d(channel,channel,kernel_size = 3,padding = 1),
-            nn.LeakyReLU(negative_slope = 0.2),
-            nn.Conv2d(channel,12,kernel_size = 3,padding = 1),
-            nn.LeakyReLU(negative_slope = 0.2),
-            nn.ConvTranspose2d(12,3,kernel_size = 2,stride = 2,groups = 3),
-            nn.LeakyReLU(negative_slope = 0.2),
-        );
+        self.layer1 = OrderedDict();
+        self.layer1['pack_layer'] = layers.PackBayerMosaicLayer(args.bayer_type);
+        for index in range(depth):
+            in_channel = 64;
+            out_channel = 64;
+            if index == 0:
+                in_channel = 4;
+            if index == depth - 1:
+                out_channel = 12;
+            self.layer1['layer_{}'.format(index)] = nn.Sequential(
+                nn.Conv2d(in_channel,out_channel,kernel_size = 3, padding = 1),
+                nn.LeakyReLU(negative_slope = 0.2),
+            );
+        self.layer1 = nn.Sequential(self.layer1);
         self.postLayer1 = nn.Sequential(
+            nn.ConvTranspose2d(12,3,kernel_size = 2,stride = 2,groups = 3),
+            nn.LeakyReLU(negative_slope = 0.2)
+        );
+        self.postLayer2 = nn.Sequential(
             nn.Conv2d(6,3,kernel_size = 3,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
             nn.Conv2d(3,3,kernel_size = 3,padding = 1),
-        )
+        );
         self.init_params();
     def init_params(self):
         for m in self.modules():
+            print(m);
             if isinstance(m, nn.Conv2d) or isinstance(m,nn.ConvTranspose2d):
                 init.kaiming_normal_(m.weight, mode='fan_out');
                 if m.bias is not None:
@@ -840,10 +848,10 @@ class Submodel(nn.Module):
                     init.constant_(m.bias, 0);
 
     def forward(self,inputs,useless):
-        pack_input = self.packlayer(inputs);
-        outputs1 = self.layer1(pack_input);
-        outputs2 = torch.cat((outputs1,inputs),1);
-        outputs = self.postLayer1(outputs2);
+        outputs1 = self.layer1(inputs);
+        outputs2 = self.postLayer1(outputs1);
+        outputs3 = torch.cat((outputs2,inputs),1);
+        outputs = self.postLayer2(outputs3);
         return outputs;
 
 
