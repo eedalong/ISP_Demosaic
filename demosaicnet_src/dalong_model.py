@@ -838,8 +838,6 @@ class Submodel(nn.Module):
             nn.Conv2d(3,3,kernel_size = 3),
         );
         self.init_params();
-        if self.depth > 1:
-            self.init_with_pretrained();
     def init_params(self):
         for m in self.modules():
             print(m);
@@ -865,11 +863,6 @@ class Submodel(nn.Module):
             next(model_parameters).data = torch.Tensor(weights);
             bias = np.load(root.format(param_index,1));
             next(model_parameters).data = torch.Tensor(bias);
-        ##Post_Layer1
-        weights = np.load(root.format(17,0));
-        next(model_parameters).data = torch.Tensor(weights);
-        bias = np.load(root.format(17,1));
-        next(model_parameters).data = torch.Tensor(bias);
 
 
     def forward(self,inputs,useless):
