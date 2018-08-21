@@ -1,4 +1,4 @@
-export CUDA_VISIBLE_DEVICES=3
+export CUDA_VISIBLE_DEVICES=2
 
 python train_classifier.py \
     --print_freq=50 \
@@ -14,7 +14,7 @@ python train_classifier.py \
     --gt_type='IMG' \
     --input_normalize=255 \
     --gt_normalize=255 \
-    --checkpoint_folder='./models/Encoder' \
+    --checkpoint_folder='./models/Encoder/16' \
     --save_freq=10 \
     --workers=8 \
     --size=128 \
@@ -24,6 +24,8 @@ python train_classifier.py \
     --input_white_point=1 \
     --gt_black_point=0 \
     --gt_white_point=1 \
+    --encoder_div=16 \
+
 
 
 

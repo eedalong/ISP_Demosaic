@@ -61,6 +61,7 @@ parser.add_argument('--submodel_num',type = int , default = 16,help = 'decide ho
 parser.add_argument('--init_router',type = str,default = '',help = 'decide which model to use in router model');
 parser.add_argument('--Crop',type=int,default = 0,help = 'decide if crop will be done to train images');
 parser.add_argument('--submodel_depth',type = str,default = '',help = '<REQUIRE> set depth for for submodels ');
+parser.add_argument('--encoder_div',type=int,default=1,help ='decide the channels used by encoder');
 
 
 

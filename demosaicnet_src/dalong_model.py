@@ -737,6 +737,7 @@ class Encoder(nn.Module):
         super(Encoder,self).__init__();
         default_channel = [96,256,384,256];
         kernel_channel = [channel / args.encoder_div  for channel in default_channel];
+        print('dalong log : check kernel_chanel = {}'.format(kernel_channel));
         linear = 4 * kernel_channel[-1];
         self.conv1 = nn.Sequential(
             nn.Conv2d(3,kernel_channel[0],kernel_size = 11, stride = 4,padding = 0),
@@ -762,11 +763,11 @@ class Encoder(nn.Module):
             nn.MaxPool2d(kernel_size = 3, stride = 2,padding = 0),
         );
         self.fc1 = nn.Sequential(
-            nn.Linear(linear,linear),
+            nn.Linear(linear,1024),
             nn.ReLU(),
         );
         self.fc2 = nn.Sequential(
-            nn.Linear(linear,16),
+            nn.Linear(1024,16),
         )
         self.init_params();
     def init_with_pretrained(self):
