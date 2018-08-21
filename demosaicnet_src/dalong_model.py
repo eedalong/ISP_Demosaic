@@ -735,41 +735,40 @@ class FastDenoisaicking(nn.Module):
 class Encoder(nn.Module):
     def __init__(self,args):
         super(Encoder,self).__init__();
+        default_channel = [96,256,384,256];
+        kernel_channel = [channel / args.encoder_div  for channel in default_channel];
+        linear = 4 * kernel_channel[-1];
         self.conv1 = nn.Sequential(
-            nn.Conv2d(3,96,kernel_size = 11, stride = 4,padding = 0),
+            nn.Conv2d(3,kernel_channel[0],kernel_size = 11, stride = 4,padding = 0),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size = 3, stride = 2,padding = 0),
-            nn.LocalResponseNorm(size = 5,alpha = 0.0001,beta = 0.75),
             )
         self.conv2 = nn.Sequential(
-            nn.Conv2d(96,256,kernel_size = 5,stride = 1,padding = 2, groups = 2),
+            nn.Conv2d(kernel_channel[0],kernel_channel[1],kernel_size = 5,stride = 1,padding = 2, groups = 2),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size = 3,stride = 2,padding = 0 ),
-            nn.LocalResponseNorm(size = 5, alpha = 0.0001,beta = 0.75),
             )
         self.conv3 = nn.Sequential(
-            nn.Conv2d(256,384,kernel_size = 3, stride = 1, padding = 1,groups = 1),
+            nn.Conv2d(kernel_channel[1],kernel_channel[2],kernel_size = 3, stride = 1, padding = 1,groups = 1),
             nn.ReLU(),
             )
         self.conv4 = nn.Sequential(
-            nn.Conv2d(384,384,kernel_size = 3, stride = 1, padding = 1,groups = 2),
+            nn.Conv2d(kernel_channel[2],kernel_channel[2],kernel_size = 3, stride = 1, padding = 1,groups = 2),
             nn.ReLU(),
             )
         self.conv5 = nn.Sequential(
-            nn.Conv2d(384,256,kernel_size = 3, stride = 1, padding = 1,groups = 2),
+            nn.Conv2d(kernel_channel[2],kernel_channel[1],kernel_size = 3, stride = 1, padding = 1,groups = 2),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size = 3, stride = 2,padding = 0),
         );
         self.fc1 = nn.Sequential(
-            nn.Linear(1024,1024),
+            nn.Linear(linear,linear),
             nn.ReLU(),
         );
         self.fc2 = nn.Sequential(
-            nn.Linear(1024,16),
+            nn.Linear(linear,16),
         )
         self.init_params();
-        self.init_with_pretrained();
-
     def init_with_pretrained(self):
         param_name = open('./pretrained/encoder/params.txt');
         param_list = param_name.readlines();
