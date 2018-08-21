@@ -62,7 +62,7 @@ class dataSet(data.Dataset):
         inputs_final = torch.FloatTensor(inputs_final);
         gt_final = torch.FloatTensor(gt_final);
         data_time_end = time.time();
-        return gt_final,gt_final;
+        return inputs_final,gt_final;
 
     def __len__(self):
         return len(self.pathlist);

@@ -38,7 +38,7 @@ def PSNR(img1,img2,crop,peak_value = 255):
     mse = 0;
     print('dalong : check crop value = {}'.format(crop));
     if crop[0] !=0 and crop[1] !=0:
-        mse = np.mean((img1[:,crop[0]:-crop[0],crop[1]:-crop[1]] - img2[:,crop[0]:-crop[0],crop[1]:-crop[1]])**2);
+        mse = np.mean((img1 - img2[:,crop[0]:-crop[0],crop[1]:-crop[1]])**2);
     else:
         print('dalong log : without crop')
         mse = np.mean((img1 - img2)**2);
@@ -52,12 +52,14 @@ def test(train_loader,model):
     for i ,(raw,data) in  enumerate(train_loader):
         tmp_start = time.time();
         if not Flag :
+            pass
+            '''
             raw_pad = np.zeros((raw.shape[0],raw.shape[1],raw.shape[2]+2*c[0],raw.shape[3]+2*c[1]));
             raw = raw.data.cpu().numpy();
             for index in range(raw.shape[0]):
                 raw_pad[index,:,:,:] = np.pad(raw[index,:,:,:],[(0,0),(c[0],c[0]),(c[1],c[1])],'reflect');
             raw = torch.FloatTensor(raw_pad);
-
+            '''
         raw_var = Variable(raw.contiguous());
         data = Variable(data);
         if cfg.CUDA_USE :
@@ -74,8 +76,6 @@ def test(train_loader,model):
             crop = (np.array(data.shape)[-2:] - np.array(output.shape[-2:])) / 2;
             c = crop;
             print('dalong log : check c  ={}'.format(c));
-            Flag = 0;
-            continue ;
         data = data.data.cpu().numpy();
         ssim_start = time.time();
         ssim_value = 0;

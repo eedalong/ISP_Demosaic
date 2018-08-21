@@ -3,7 +3,7 @@ export CUDA_VISIBLE_DEVICES=0
 python train.py \
     --print_freq=50 \
     --max_epoch=5000 \
-    --flist='/home/xlyuan/ImagesTrainAll/2/train.txt' \
+    --flist='/home/xlyuan/ImagesTrainAll/1/train.txt' \
     --Random=1 \
     --bayer_type='GRBG' \
     --model='Submodel' \
@@ -14,7 +14,7 @@ python train.py \
     --gt_type='IMG' \
     --input_normalize=255 \
     --gt_normalize=255 \
-    --checkpoint_folder='./models/SubModel_2/3' \
+    --checkpoint_folder='./models/SubModel_1/2' \
     --save_freq=50 \
     --workers=8 \
     --size=64 \
@@ -24,7 +24,7 @@ python train.py \
     --input_white_point=1 \
     --gt_black_point=0 \
     --gt_white_point=1 \
-    --depth=3 \
+    --depth=2 \
     --Crop=0 \
 
 

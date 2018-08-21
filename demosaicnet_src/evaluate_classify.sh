@@ -12,7 +12,7 @@ python evaluate_classify.py \
     --gt_type='IMG' \
     --input_normalize=255 \
     --gt_normalize=255 \
-    --checkpoint_folder='./models/Encoder' \
+    --checkpoint_folder='./models/Encoder/16' \
     --workers=0 \
     --size=24 \
     --input_black_point=0 \
@@ -20,7 +20,8 @@ python evaluate_classify.py \
     --gt_black_point=0 \
     --gt_white_point=1 \
     --pretrained=0 \
-    --init_model='DemoisaicNet_state_epoch140.pth' \
+    --encoder_div=16 \
+    --init_model='DemoisaicNet_state_epoch30.pth' \
 
 
 
