@@ -8,6 +8,7 @@ import os
 import shutil
 import datasets_classify as datasets
 import utils
+from PIL import Image
 correct = 0;
 all_samples = 0;
 def Test(test_loader,model):
@@ -24,9 +25,14 @@ def Test(test_loader,model):
         outputs = outputs.data.cpu().numpy();
         gt = gt.data.cpu().numpy();
 
+        inputs_image = inputs.data.cpu().numpy()
         for index in range(batchsize):
             all_samples = all_samples + 1;
             predicted_index = np.argmax(outputs[index,:]);
+            print('predicted index = {}'.format(predicted_index));
+            image = (inputs_image[index,:,:,:] * 255).astype('uint8');
+            image = Image.fromarray(image.transpose(1,2,0));
+            image.save('./results/{}.jpg'.format(index));
             if predicted_index == gt[index] :
                 correct = correct + 1;
 

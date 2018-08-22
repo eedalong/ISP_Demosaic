@@ -796,7 +796,6 @@ class Encoder(nn.Module):
                     init.constant_(m.bias, 0);
 
     def forward(self, inputs,useless ):
-
         outputs = self.conv1(inputs);
         outputs = self.conv2(outputs);
         outputs = self.conv3(outputs);
@@ -812,7 +811,8 @@ class Submodel(nn.Module):
         super(Submodel,self).__init__();
         self.args = args;
         self.depth = depth;
-        channel = 64;
+        channel = 64 / args.submodel_div;
+        self.BayerMosaic = layers.BayerMosaicLayer(args.bayer_type);
         self.Crop = layers.CropLayer();
         self.layer1 = OrderedDict();
         self.layer1['pack_layer'] = layers.PackBayerMosaicLayer(args.bayer_type);

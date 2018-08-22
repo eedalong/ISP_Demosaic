@@ -4,7 +4,7 @@ python evaluate_classify.py \
     --Evaluate=1 \
     --flist='/home/xlyuan/ImagesAll/test.txt' \
     --Random=1 \
-    --bayer_type='GBRG' \
+    --bayer_type='GRBG' \
     --model='Encoder' \
     --TRAIN_BATCH=1 \
     --GET_BATCH=1 \
@@ -12,7 +12,7 @@ python evaluate_classify.py \
     --gt_type='IMG' \
     --input_normalize=255 \
     --gt_normalize=255 \
-    --checkpoint_folder='./models/Encoder/16' \
+    --checkpoint_folder='./models/Encoder/4' \
     --workers=0 \
     --size=24 \
     --input_black_point=0 \
@@ -20,8 +20,8 @@ python evaluate_classify.py \
     --gt_black_point=0 \
     --gt_white_point=1 \
     --pretrained=0 \
-    --encoder_div=16 \
-    --init_model='DemoisaicNet_state_epoch30.pth' \
+    --encoder_div=4 \
+    --init_model='DemoisaicNet_state_epoch20.pth' \
 
 
 

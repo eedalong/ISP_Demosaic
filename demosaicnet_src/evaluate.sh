@@ -1,8 +1,8 @@
-export CUDA_VISIBLE_DEVICES=3
+export CUDA_VISIBLE_DEVICES=1
 
 python evaluate.py \
     --Evaluate=1 \
-    --flist='/home/xlyuan/ImagesTrainAll/2/test.txt' \
+    --flist='/home/xlyuan/ImagesTrainAll/15/test.txt' \
     --Random=0 \
     --bayer_type='GRBG' \
     --model='Submodel' \
@@ -12,7 +12,7 @@ python evaluate.py \
     --gt_type='IMG' \
     --input_normalize=255 \
     --gt_normalize=255 \
-    --checkpoint_folder='./models/SubModel_2/1/' \
+    --checkpoint_folder='./models/SubModel_15/1/' \
     --workers=0 \
     --size=64 \
     --input_black_point=0 \
@@ -20,7 +20,7 @@ python evaluate.py \
     --gt_black_point=0 \
     --gt_white_point=1 \
     --pretrained=1 \
-    --init_model='DemoisaicNet_state_epoch150.pth' \
+    --init_model='DemoisaicNet_state_epoch50.pth' \
     --depth=1 \
     --Crop=0 \
 

@@ -10,6 +10,8 @@ class AverageMeter:
         self.n = 0;
         self.value = 0;
     def update(self,value,count = 1):
+        if float(value) == float('inf'):
+            return ;
         self.value = (self.value * self.n + value * count) / (self.n + count);
         self.n = self.n + count;
         return ;

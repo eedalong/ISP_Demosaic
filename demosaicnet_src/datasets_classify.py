@@ -23,15 +23,15 @@ def unpack_raw(raw,args):
         output[1,1::2,::2] = raw[2,:,:];
         output[2,1::2,1::2] = raw[3,:,:];
     if args.bayer_type == 'GBRG':
-        output[1,::2,::2] = raw[1,:,:];
-        output[2,::2,1::2] = raw[2,:,:];
-        output[0,1::2,::2] = raw[0,:,:];
-        output[1,1::2,1::2] = raw[1,:,:];
+        output[1,::2,::2] = raw[0,:,:];
+        output[2,::2,1::2] = raw[1,:,:];
+        output[0,1::2,::2] = raw[2,:,:];
+        output[1,1::2,1::2] = raw[3,:,:];
     if args.bayer_type == 'GRBG':
-        output[1,::2,::2] = raw[1,:,:];
-        output[0,::2,1::2] = raw[0,:,:];
+        output[1,::2,::2] = raw[0,:,:];
+        output[0,::2,1::2] = raw[1,:,:];
         output[2,1::2,::2] = raw[2,:,:];
-        output[1,1::2,1::2] = raw[1,:,:];
+        output[1,1::2,1::2] = raw[3,:,:];
 
     return output ;
 def RandomFLipH(raw):

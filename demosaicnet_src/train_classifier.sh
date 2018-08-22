@@ -1,11 +1,11 @@
-export CUDA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=3
 
 python train_classifier.py \
     --print_freq=50 \
     --max_epoch=5000 \
     --flist='/home/xlyuan/ImagesAll/train.txt' \
     --Random=1 \
-    --bayer_type='GBRG' \
+    --bayer_type='GRBG' \
     --model='Encoder' \
     --loss='L1Loss' \
     --TRAIN_BATCH=16 \
@@ -14,7 +14,7 @@ python train_classifier.py \
     --gt_type='IMG' \
     --input_normalize=255 \
     --gt_normalize=255 \
-    --checkpoint_folder='./models/Encoder/16' \
+    --checkpoint_folder='./models/Encoder/4' \
     --save_freq=10 \
     --workers=8 \
     --size=128 \
@@ -24,7 +24,7 @@ python train_classifier.py \
     --input_white_point=1 \
     --gt_black_point=0 \
     --gt_white_point=1 \
-    --encoder_div=16 \
+    --encoder_div=4 \
 
 
 
