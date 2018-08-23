@@ -62,7 +62,10 @@ parser.add_argument('--init_router',type = str,default = '',help = 'decide which
 parser.add_argument('--Crop',type=int,default = 0,help = 'decide if crop will be done to train images');
 parser.add_argument('--submodel_depth',type = str,default = '',help = '<REQUIRE> set depth for for submodels ');
 parser.add_argument('--encoder_div',type=int,default=1,help ='decide the channels used by encoder');
-parser.add_argument('--submodel_div',type =int,default = 1,help =  'decide the channel used by demosaicnet');
-
-
+parser.add_argument('--submodel_div',type =int,default = 1,help =  'decide the channel used by submodels');
+parser.add_argument('--real_patchsize',type = int ,default = 120,help = 'decide real patch  size ');
+parser.add_argument('--test_patchsize',type = int,default = 128 , help = 'decide test patch size ');
+parser.add_argument('--demosaicnet_div',type =int,default = 1,help =  'decide the channel used by demosaicnet');
+parser.add_argument('--add_noise',type = int,default = 0,help = 'decide if add Gaussian noise to input image');
+parser.add_argument('--max_noise',type = float,default = 0.1,help = 'decide the max noise level added to image');
 

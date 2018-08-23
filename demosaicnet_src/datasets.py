@@ -9,12 +9,13 @@ from PIL import Image
 
 def collate_fn(batch):
     inputs = batch[0][0];
-    gt = batch[0][1]
+    gt = batch[0][1];
+    noise_std = batch[0][2]
     for index in range(1,len(batch)):
         inputs = torch.cat((inputs,batch[index][0]),0);
         gt = torch.cat((gt,batch[index][1]),0);
-    return inputs,gt;
-
+        noise_std = torch.cat((noise_std,batch[index][2]),0);
+    return inputs,gt,noise_std;
 
 class dataSet(data.Dataset):
     def __init__(self,args):
@@ -31,7 +32,7 @@ class dataSet(data.Dataset):
         paths =  self.pathlist[index][:-1].split();
         input_path = paths[0];
         gt_path = paths[1];
-        inputs = self.reader.input_loader(input_path);
+        inputs,noise_std = self.reader.input_loader(input_path);
         gt = self.reader.gt_loader(gt_path);
 
         inputs_final = inputs.transpose(2,0,1);
@@ -62,7 +63,7 @@ class dataSet(data.Dataset):
         inputs_final = torch.FloatTensor(inputs_final);
         gt_final = torch.FloatTensor(gt_final);
         data_time_end = time.time();
-        return inputs_final,gt_final;
+        return inputs_final,gt_final,noise_std;
 
     def __len__(self):
         return len(self.pathlist);

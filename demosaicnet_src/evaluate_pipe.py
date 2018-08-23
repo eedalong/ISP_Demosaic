@@ -33,7 +33,7 @@ def Test(test_loader,submodels,router):
         submodels[model_index].eval();
     router = router.eval();
     total_time = 0;
-    for i ,(inputs,gt) in enumerate(test_loader):
+    for i ,(inputs,gt,noise_map) in enumerate(test_loader):
         inputs = Variable(inputs);
         height = inputs.size(2);
         width = inputs.size(3);

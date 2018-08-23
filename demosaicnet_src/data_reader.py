@@ -5,7 +5,7 @@ import time
 import os
 import random
 import skimage.transform as sktransform
-
+import torch
 class data_reader :
     '''
     This class is intended to provide a unified data reader interface
@@ -49,26 +49,30 @@ class data_reader :
         img = np.dstack((img,img,img));
         return img.astype('float32')
     def input_loader(self,path):
+        noise_std = torch.FloatTensor(np.zeros((1,1,4,4)));
         if self.input_type == 'IMG':
             out = self.image_loader(path,self.args.input_normalize);
+            if self.args.add_noise :
+                out,noise_std = self.AddGaussianNoise(out);
+                noise_stdmap = np.zeros((1,1,out.shape[0] / 2,out.shape[1] / 2));
+                noise_stdmap[0,0,:,:] = noise_std;
             out = self.pack_raw(out);
             out = self.BLC(out,self.args.input_white_point,self.args.input_black_point);
             out = self.WB(out,self.args.input_white_balance);
-
-            return out;
+            return out,noise_std;
 
         if self.input_type == 'NUMPY':
             out = self.numpy_loader(path);
             out = self.pack_raw(out);
-            return out;
+            return out,noise_std;
         if self.input_type == 'DNG_IMG':
-            return self.dngimg_loader(path,self.args.input_normalize);
+            return self.dngimg_loader(path,self.args.input_normalize),noise_std;
         if self.input_type == 'DNG_RAW':
             out = self.dngraw_loader(path,self.args.input_normalize);
             out = self.pack_raw(out);
             out = self.BLC(out,self.args.input_white_point,self.args.input_black_point);
             out = self.WB(out,self.args.input_white_balance);
-            return out;
+            return out,noise_std;
 
     def gt_loader(self,path):
         if self.gt_type == 'IMG':
@@ -82,7 +86,7 @@ class data_reader :
             out = self.pack_raw(out);
             out = self.BLC(out,self.args.gt_white_point,self.args.gt_black_point);
             out = self.WB(out,self.args.gt_white_balance);
-            return out
+            return out;
     def BLC(self,inputs,white_point,black_point):
         return (inputs - black_point ) / (white_point - black_point);
     def WB(self,inputs,white_balance):
@@ -139,11 +143,17 @@ class data_reader :
             return np.transpose(raw,(1,0,2)).copy(),np.transpose(data,(1,0,2)).copy();
         return raw,data;
 
-    def AddGaussianNoise(self,raw,sigma = 1):
+    def AddGaussianNoise(self,inputs):
+        '''
+        This Module add noise to a RGB image before packing
 
-        if self.AddGaussianNoise:
-            noise = np.random.normal(loc = 0,scale = sigma,size = raw.shape);
-            return raw + noise;
+        '''
+        noise_std = 0;
+        if self.args.add_noise:
+            noise_std = np.random.uniform(0,self.args.max_noise);
+            inputs = inputs + np.random.normal(0,std,size = inputs.shape);
+            inputs = np.clip(inputs,0,1);
+            return inputs,noise_std;
         return raw ;
 
     def Resize(self,raw,size):

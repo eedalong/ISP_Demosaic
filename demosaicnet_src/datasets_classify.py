@@ -72,8 +72,9 @@ class dataSet(data.Dataset):
         paths =  self.pathlist[index][:-1].split();
         input_path = paths[0];
         gt = int(paths[1]);
-        inputs = self.reader.input_loader(input_path);
-
+        inputs,noise_std = self.reader.input_loader(input_path);
+        noise_map = np.zeros((1,1,input.shape[0] * 2,inputs.shape[1] * 2));
+        noise_map[0,0,:,:] = noise_std[0,0,0,0];
         if self.Random:
             tmp_inputs = RandomFLipH(inputs);
             tmp_inputs = RandomFlipV(tmp_inputs);
@@ -82,7 +83,7 @@ class dataSet(data.Dataset):
         inputs = unpack_raw(tmp_inputs,self.args);
         inputs = torch.FloatTensor(inputs);
         data_time_end = time.time();
-        return inputs,gt;
+        return inputs,gt,torch.FloatTensor(noise_std);
 
     def __len__(self):
         return len(self.pathlist);

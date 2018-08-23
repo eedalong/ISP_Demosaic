@@ -15,13 +15,16 @@ def train(train_loader,model,criterion,optimizer,epoch,args):
     model.train(True);
     start = time.time();
 
-    for i , (inputs,gt) in enumerate(train_loader):
+    for i , (inputs,gt,noise_std) in enumerate(train_loader):
         inputs = Variable(inputs);
         gt = Variable(gt);
+        noise_std = Variable(noise_std);
         if cfg.CUDA_USE :
             inputs = inputs.cuda();
             gt = gt.cuda();
-        out = model(inputs,0);
+            noise_std = noise_std.cuda();
+
+        out = model(inputs,noise_std);
         loss = criterion(out,gt);
         losses.update(loss.item(),inputs.size(0));
         optimizer.zero_grad();

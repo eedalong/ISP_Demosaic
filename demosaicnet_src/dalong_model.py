@@ -96,10 +96,12 @@ class BayerNetwork(nn.Module):
     def __init__(self,args):
         super(BayerNetwork, self).__init__()
 
-        self.mosaic_mask = layers.BayerMosaicLayer(bayer_type = 'GRBG');
+        self.mosaic_mask = layers.BayerMosaicLayer(bayer_type = args.bayer_type);
         self.crop_like = layers.CropLayer();
         self.depth = 15
-        self.width = args.width
+        self.width = 64 / args.demosaicnet_div ;
+        print('dalong log : check width in BayerNet = {}'.format(self.width));
+
         layers1 = OrderedDict([
             ("pack_mosaic", nn.Conv2d(3, 4, 2, stride=2)),  # Downsample 2x2 to re-establish translation invariance
         ])
@@ -149,23 +151,16 @@ class BayerNetwork(nn.Module):
             tmp_param = np.load('./pretrained/bayer/' + param[:-1]);
             print('dalong log : check bayer parameter shape = {}'.format(tmp_param.shape));
             next(model_parameters).data = torch.Tensor(tmp_param);
-            #tmp_param = np.load('./pretrained/bayer/' + param[:-1]);
-            #next(model_parameters).data = torch.Tensor(tmp_param);
 
     def forward(self, samples,no_use):
         # 1/4 resolution features
         mosaic = self.mosaic_mask(samples);
-        #print(mosaic[0,0,:6,:6]);
-        #print(samples[0,0,:6,:6]);
-        #print(no_use[0,0,:6,:6]);
-        print(mosaic.size(),samples.size(),no_use.size())
         noise  = Variable(torch.FloatTensor(np.zeros((samples.size(0),1,samples.size(2),samples.size(3)))));
         features = self.main_processor(mosaic)
         filters, masks = features[:, :self.width], features[:, self.width:]
         filtered = filters * masks
         residual = self.residual_predictor(filtered)
         upsampled = self.upsampler(residual)
-
         # crop original mosaic to match output size
         cropped = self.crop_like(mosaic, upsampled)
 
@@ -735,12 +730,16 @@ class FastDenoisaicking(nn.Module):
 class Encoder(nn.Module):
     def __init__(self,args):
         super(Encoder,self).__init__();
+        self.args = args;
         default_channel = [96,256,384,256];
+        input_channel = 3 ;
+        if self.args.add_noise :
+            input_channel = 4;
         kernel_channel = [channel / args.encoder_div  for channel in default_channel];
         print('dalong log : check kernel_chanel = {}'.format(kernel_channel));
         linear = 4 * kernel_channel[-1];
         self.conv1 = nn.Sequential(
-            nn.Conv2d(3,kernel_channel[0],kernel_size = 11, stride = 4,padding = 0),
+            nn.Conv2d(input_channel,kernel_channel[0],kernel_size = 11, stride = 4,padding = 0),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size = 3, stride = 2,padding = 0),
             )
@@ -795,7 +794,9 @@ class Encoder(nn.Module):
                 if m.bias is not None:
                     init.constant_(m.bias, 0);
 
-    def forward(self, inputs,useless ):
+    def forward(self, inputs,noise_map):
+        if self.args.add_noise :
+            inputs = torch.cat((inputs,noise_map),1);
         outputs = self.conv1(inputs);
         outputs = self.conv2(outputs);
         outputs = self.conv3(outputs);
@@ -811,16 +812,20 @@ class Submodel(nn.Module):
         super(Submodel,self).__init__();
         self.args = args;
         self.depth = depth;
+        input_channel = 4;
+        if self.args.add_noise :
+            input_channel = 5;
         channel = 64 / args.submodel_div;
+        print('dalong log : check channel in SubModel ={}'.format(channel));
         self.BayerMosaic = layers.BayerMosaicLayer(args.bayer_type);
         self.Crop = layers.CropLayer();
         self.layer1 = OrderedDict();
-        self.layer1['pack_layer'] = layers.PackBayerMosaicLayer(args.bayer_type);
+        self.pack_layer = layers.PackBayerMosaicLayer(args.bayer_type);
         for index in range(depth):
             in_channel = 64;
             out_channel = 64;
             if index == 0:
-                in_channel = 4;
+                in_channel = input_channel;
             if index == depth - 1:
                 out_channel = 12;
             self.layer1['layer_{}'.format(index)] = nn.Sequential(
@@ -865,8 +870,11 @@ class Submodel(nn.Module):
             next(model_parameters).data = torch.Tensor(bias);
 
 
-    def forward(self,inputs,useless):
-        outputs1 = self.layer1(inputs);
+    def forward(self,inputs,noise_map):
+        packed_inputs = self.pack_layer(inputs);
+        if self.args.add_noise :
+            packed_inputs = torch.cat((packed_inputs,noise_map),1);
+        outputs1 = self.layer1(packed_inputs);
         outputs2 = self.postLayer1(outputs1);
         inputs = self.Crop(inputs,outputs2)
         outputs3 = torch.cat((outputs2,inputs),1);

@@ -49,7 +49,7 @@ def test(train_loader,model):
     start = time.time();
     c = 0;
     crop = 0;
-    for i ,(raw,data) in  enumerate(train_loader):
+    for i ,(raw,data,noise_map) in  enumerate(train_loader):
         tmp_start = time.time();
         if not Flag :
             print('PADD');
@@ -76,7 +76,7 @@ def test(train_loader,model):
             c = crop;
             print('dalong log : check c  ={}'.format(c));
             Flag = 0;
-            continue;
+            continue ;
         data = data.data.cpu().numpy();
         ssim_start = time.time();
         ssim_value = 0;

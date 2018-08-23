@@ -3,7 +3,7 @@ export CUDA_VISIBLE_DEVICES=3
 python evaluate_pipe.py \
     --Evaluate=1 \
     --flist='/home/xlyuan/Pipe_Test/test.txt' \
-    --Random=0 \
+    --Random=1 \
     --bayer_type='GRBG' \
     --GET_BATCH=1 \
     --input_type='IMG' \
@@ -37,6 +37,12 @@ python evaluate_pipe.py \
     --submodel_num=16 \
     --depth=1 \
     --encoder_div=8 \
+    --real_patchsize=120 \
+    --test_patchsize=128 \
+    --size=512 \
+    --Crop=1 \
+
+
 
 
 
