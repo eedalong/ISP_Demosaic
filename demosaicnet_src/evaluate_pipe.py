@@ -107,7 +107,7 @@ def Test(test_loader,submodels,router):
 def main(args):
     submodels = [];
     for model_index in range(args.submodel_num):
-        submodel  = dalong_model.Submodel(args,args.depth);
+        submodel  = dalong_model.Submodel(args,args.init_depth[model_index]);
         if cfg.CUDA_USE :
             submodel = submodel.cuda();
         submodels.append(submodel);
@@ -118,7 +118,7 @@ def main(args):
     test_dataset = datasets.dataSet(args);
     test_loader = torch.utils.data.DataLoader(test_dataset,1,shuffle = False,num_workers = int(args.workers),collate_fn = datasets.collate_fn);
     for model_index in range(args.submodel_num):
-        init_model = os.path.join('./models/SubModel_'+str(model_index)+'/1/',args.init_submodel[model_index]);
+        init_model = os.path.join('./models/SubModel_{}/{}/{}'.format(model_index,args.init_folder[model_index],args.init_submodel[model_index]));
         print('dalong log : for model {} , init with {}'.format(model_index,init_model));
         model_dict = torch.load(init_model);
         submodels[model_index].load_state_dict(model_dict);
@@ -136,7 +136,9 @@ if __name__ == '__main__':
     parser = cfg.parser;
     args = parser.parse_args();
     tmp = args.init_submodel.split('\\');
-
+    args.init_folder = args.init_folder.split();
+    args.init_depth = args.init_depth.split();
+    args.init_depth = [int(item) for item in args.init_depth]
     args.init_submodel = [tmp[index].split(' ')[-1] for index in range(1,len(tmp))];
     print('all the params set  = {}'.format(args));
     if not os.path.exists(args.checkpoint_folder):

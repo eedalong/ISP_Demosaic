@@ -91,7 +91,7 @@ def test(train_loader,model):
             save_image = Image.fromarray(data_image.transpose(2,1,0));
             save_image.save('results/image'+str(image_index)+'.jpg');
             input_image = (data[index,:,:,:]*255).astype('uint8');
-            psnr = PSNR(data_image,input_image,crop,255);
+            psnr = PSNR(data_image,input_image,(0,0),255);
             input_image = Image.fromarray(input_image.transpose(2,1,0));
             input_image.save('results/input'+str(image_index)+'.jpg');
             psnr_meter.update(psnr);

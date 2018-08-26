@@ -829,7 +829,7 @@ class Submodel(nn.Module):
             if index == depth - 1:
                 out_channel = 12;
             self.layer1['layer_{}'.format(index)] = nn.Sequential(
-                nn.Conv2d(in_channel,out_channel,kernel_size = 3),
+                nn.Conv2d(in_channel,out_channel,kernel_size = 3,padding = 1),
                 nn.LeakyReLU(negative_slope = 0.2),
             );
         self.layer1 = nn.Sequential(self.layer1);
@@ -838,9 +838,9 @@ class Submodel(nn.Module):
             nn.LeakyReLU(negative_slope = 0.2)
         );
         self.postLayer2 = nn.Sequential(
-            nn.Conv2d(6,3,kernel_size = 3),
+            nn.Conv2d(6,3,kernel_size = 3,padding = 1),
             nn.LeakyReLU(negative_slope = 0.2),
-            nn.Conv2d(3,3,kernel_size = 3),
+            nn.Conv2d(3,3,kernel_size = 3,padding = 1),
         );
         self.init_params();
     def init_params(self):

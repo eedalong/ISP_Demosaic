@@ -68,4 +68,5 @@ parser.add_argument('--test_patchsize',type = int,default = 128 , help = 'decide
 parser.add_argument('--demosaicnet_div',type =int,default = 1,help =  'decide the channel used by demosaicnet');
 parser.add_argument('--add_noise',type = int,default = 0,help = 'decide if add Gaussian noise to input image');
 parser.add_argument('--max_noise',type = float,default = 0.1,help = 'decide the max noise level added to image');
-
+parser.add_argument('--init_folder',type = str,default = '',help = 'decide model folder tested in pipeline');
+parser.add_argument('--init_depth',type = str,default = '',help = 'decide model depth tested in pipeline');
