@@ -20,21 +20,21 @@ python evaluate_pipe.py \
     --init_folder='1/ 5/16 5/16 1/ 1/ 1/ 1/ 1/ 5/16 5/16 1/ 1/ 5/16 5/16 5/16 5/16' \
     --init_depth='1 5 5 1 1 1 1 1 5 5 1 1 5 5 5 5' \
     --init_submodel='\
-     DemoisaicNet_state_epoch50.pth\
-    DemoisaicNet_state_epoch450.pth\
-    DemoisaicNet_state_epoch500.pth\
+    DemoisaicNet_state_epoch100.pth\
+    DemoisaicNet_state_epoch250.pth\
+    DemoisaicNet_state_epoch250.pth\
+    DemoisaicNet_state_epoch300.pth\
     DemoisaicNet_state_epoch150.pth\
-    DemoisaicNet_state_epoch50.pth\
-    DemoisaicNet_state_epoch50.pth\
-    DemoisaicNet_state_epoch50.pth\
+    DemoisaicNet_state_epoch250.pth\
     DemoisaicNet_state_epoch100.pth\
     DemoisaicNet_state_epoch300.pth\
-    DemoisaicNet_state_epoch50.pth\
-    DemoisaicNet_state_epoch200.pth\
-    DemoisaicNet_state_epoch200.pth\
-    DemoisaicNet_state_epoch400.pth\
-    DemoisaicNet_state_epoch500.pth\
-    DemoisaicNet_state_epoch400.pth\
+    DemoisaicNet_state_epoch150.pth\
+    DemoisaicNet_state_epoch100.pth\
+    DemoisaicNet_state_epoch350.pth\
+    DemoisaicNet_state_epoch250.pth\
+    DemoisaicNet_state_epoch250.pth\
+    DemoisaicNet_state_epoch150.pth\
+    DemoisaicNet_state_epoch250.pth\
     DemoisaicNet_state_epoch300.pth'\
     --submodel_num=16 \
     --depth=1 \
