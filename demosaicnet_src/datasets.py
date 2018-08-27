@@ -39,6 +39,8 @@ class dataSet(data.Dataset):
         inputs_final = np.expand_dims(inputs_final,axis = 0);
         gt_final = gt.transpose(2,0,1);
         gt_final = np.expand_dims(gt_final,axis = 0);
+        noise_map = np.zeros((self.args.GET_BATCH,1,self.args.size,self.args.size));
+        noise_map[:,:,:,:] = noise_std;
 
         if self.Random :
             inputs_final = np.zeros((self.args.GET_BATCH ,4,self.args.size,self.args.size));
@@ -63,7 +65,9 @@ class dataSet(data.Dataset):
         inputs_final = torch.FloatTensor(inputs_final);
         gt_final = torch.FloatTensor(gt_final);
         data_time_end = time.time();
-        return inputs_final,gt_final,noise_std;
+        noise_map = torch.FloatTensor(noise_map);
+
+        return inputs_final,gt_final,noise_map;
 
     def __len__(self):
         return len(self.pathlist);

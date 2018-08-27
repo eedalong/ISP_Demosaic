@@ -38,7 +38,7 @@ def PSNR(img1,img2,crop,peak_value = 255):
     mse = 0;
     print('dalong : check crop value = {}'.format(crop));
     if crop[0] !=0 and crop[1] !=0:
-        mse = np.mean((img1[:,crop[0]:-crop[0],crop[1]:-crop[1]]- img2[:,crop[0]:-crop[0],crop[1]:-crop[1]])**2);
+        mse = np.mean((img1- img2[:,crop[0]:-crop[0],crop[1]:-crop[1]])**2);
     else:
         print('dalong log : without crop')
         mse = np.mean((img1 - img2)**2);
@@ -60,11 +60,14 @@ def test(train_loader,model):
             raw = torch.FloatTensor(raw_pad);
         raw_var = Variable(raw.contiguous());
         data = Variable(data);
+        noise_map = Variable(noise_map);
         if cfg.CUDA_USE :
             raw_var = raw_var.cuda();
             data = data.cuda();
+            noise_map = noise_map.cuda();
+
         forward_start = time.time();
-        output = model(raw_var,data);
+        output = model(raw_var,noise_map);
         print('dalong log : check output size = {}'.format(output.size()));
         # JUST FOR DEBUG
         forward_end = time.time();
@@ -75,8 +78,8 @@ def test(train_loader,model):
             crop = (np.array(data.shape)[-2:] - np.array(output.shape[-2:])) / 2;
             c = crop;
             print('dalong log : check c  ={}'.format(c));
-            Flag = 0;
-            continue ;
+            #Flag = 0;
+            #continue ;
         data = data.data.cpu().numpy();
         ssim_start = time.time();
         ssim_value = 0;
@@ -91,7 +94,7 @@ def test(train_loader,model):
             save_image = Image.fromarray(data_image.transpose(2,1,0));
             save_image.save('results/image'+str(image_index)+'.jpg');
             input_image = (data[index,:,:,:]*255).astype('uint8');
-            psnr = PSNR(data_image,input_image,(0,0),255);
+            psnr = PSNR(data_image,input_image,crop,255);
             input_image = Image.fromarray(input_image.transpose(2,1,0));
             input_image.save('results/input'+str(image_index)+'.jpg');
             psnr_meter.update(psnr);

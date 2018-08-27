@@ -41,7 +41,8 @@ def Test(test_loader,submodels,router):
         num_width = int(width / 120)   ;
         num_height = int(height / 120)  ;
         total_num = num_width * num_height ;
-
+        if cfg.CUDA_USE :
+            inputs = inputs.cuda();
         final_image = np.zeros((3,120 * num_height,120 * num_width));
         gt_image = np.zeros((3,120 * num_height,120 * num_width));
         total_time = 0;
@@ -51,27 +52,17 @@ def Test(test_loader,submodels,router):
             for width_index in range(num_width) :
                 block_index = block_index + 1;
                 up = max(height_index * 120 -4,0) ;
-                up_pad = 4 - height_index *120  +up;
+                up_pad = height_index *120  - up;
                 bottom = min((height_index+1) * 120 + 4,height) ;
-                bottom_pad = 4 -bottom + (height_index+1) *120;
+                bottom_pad = bottom - (height_index+1) *120;
                 left = max(width_index * 120 - 4,0) ;
-                left_pad = 4 -width_index *120  + left;
+                left_pad = width_index *120  - left;
                 right = min((width_index+1) * 120 + 4,width);
-                right_pad =  4 -right + (width_index + 1) * 120  ;
+                right_pad =  right - (width_index + 1) * 120  ;
                 patch_width = right- left ;
                 patch_height = bottom - up;
                 inputs_patch = inputs[0,:,up:bottom,left : right];
                 inputs_patch = inputs_patch.unsqueeze(0);
-                if patch_width != 128 or patch_height != 128 :
-                    inputs_pad = np.zeros((1,inputs.size(1),128,128));
-                    inputs_patch = inputs_patch.data.cpu().numpy();
-                    inputs_pad[0,:,:,:] = np.pad(inputs_patch[0,:,:,:],[(0,0),(up_pad,bottom_pad),(left_pad,right_pad)],'reflect');
-                    inputs_patch = inputs_pad;
-                    inputs_patch  = torch.FloatTensor(inputs_patch);
-                if cfg.CUDA_USE:
-                    inputs_patch = inputs_patch.cuda();
-
-
                 start =  time.time();
                 outputs = router(inputs_patch,0);
                 total_time = total_time + time.time() - start;
@@ -82,7 +73,7 @@ def Test(test_loader,submodels,router):
                 total_time = total_time + time.time() - start;
                 outputs_patch = outputs_patch.data.cpu().numpy();
 
-                final_image[:,height_index * 120 : (height_index + 1)* 120, width_index * 120 : (width_index + 1)* 120] = np.clip(outputs_patch[0,:,:,:]*255,0,255);
+                final_image[:,height_index * 120 : (height_index + 1)* 120, width_index * 120 : (width_index + 1)* 120] = np.clip(outputs_patch[0,:,up_pad:patch_height - bottom_pad,left_pad:patch_width - right_pad]*255,0,255);
                 gt_image[:,height_index * 120:(height_index + 1) * 120,width_index * 120 :(width_index + 1)* 120] = np.clip(gt[0,:,height_index * 120:(height_index+1) * 120 ,width_index * 120:(width_index + 1) * 120]*255,0,255);
         gt_image = gt_image.astype('uint8').transpose(1,2,0);
         final_image = final_image.astype('uint8').transpose(1,2,0);

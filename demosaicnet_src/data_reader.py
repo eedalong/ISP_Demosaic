@@ -49,13 +49,11 @@ class data_reader :
         img = np.dstack((img,img,img));
         return img.astype('float32')
     def input_loader(self,path):
-        noise_std = torch.FloatTensor(np.zeros((1,1,4,4)));
+        noise_std = 0;
         if self.input_type == 'IMG':
             out = self.image_loader(path,self.args.input_normalize);
             if self.args.add_noise :
                 out,noise_std = self.AddGaussianNoise(out);
-                noise_stdmap = np.zeros((1,1,out.shape[0] / 2,out.shape[1] / 2));
-                noise_stdmap[0,0,:,:] = noise_std;
             out = self.pack_raw(out);
             out = self.BLC(out,self.args.input_white_point,self.args.input_black_point);
             out = self.WB(out,self.args.input_white_balance);
@@ -151,7 +149,7 @@ class data_reader :
         noise_std = 0;
         if self.args.add_noise:
             noise_std = np.random.uniform(0,self.args.max_noise);
-            inputs = inputs + np.random.normal(0,std,size = inputs.shape);
+            inputs = inputs + np.random.normal(0,noise_std,size = inputs.shape);
             inputs = np.clip(inputs,0,1);
             return inputs,noise_std;
         return raw ;

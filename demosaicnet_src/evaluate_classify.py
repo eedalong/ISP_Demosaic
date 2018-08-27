@@ -14,13 +14,15 @@ all_samples = 0;
 def Test(test_loader,model):
     global correct , all_samples;
     model.eval();
-    for i ,(inputs,gt) in enumerate(test_loader):
+    for i ,(inputs,gt,noise_map) in enumerate(test_loader):
         inputs = Variable(inputs);
+        noise_map = Variable(noise_map);
         gt = Variable(gt);
         if cfg.CUDA_USE:
             inputs = inputs.cuda();
             gt = gt.cuda();
-        outputs = model(inputs,0);
+            noise_map = noise_map.cuda();
+        outputs = model(inputs,noise_map);
         batchsize = outputs.size(0);
         outputs = outputs.data.cpu().numpy();
         gt = gt.data.cpu().numpy();

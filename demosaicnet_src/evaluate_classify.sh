@@ -12,16 +12,18 @@ python evaluate_classify.py \
     --gt_type='IMG' \
     --input_normalize=255 \
     --gt_normalize=255 \
-    --checkpoint_folder='./models/Encoder/4' \
+    --checkpoint_folder='./models/Encoder/4_noise' \
     --workers=0 \
-    --size=24 \
+    --size=64 \
     --input_black_point=0 \
     --input_white_point=1 \
     --gt_black_point=0 \
     --gt_white_point=1 \
     --pretrained=0 \
     --encoder_div=4 \
-    --init_model='DemoisaicNet_state_epoch20.pth' \
+    --init_model='DemoisaicNet_state_epoch50.pth' \
+    --add_noise=1 \
+
 
 
 
